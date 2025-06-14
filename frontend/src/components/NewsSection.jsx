@@ -12,14 +12,69 @@ import {
   ListItemText,
   Divider,
   Button,
-  Container
+  Container,
+  Chip // Added Chip for potential future use or styling
 } from '@mui/material';
 import { getDaysAgoDate } from '../utils/dateUtils';
 import LinkIcon from '@mui/icons-material/Link';
 import ImageNotSupportedIcon from '@mui/icons-material/ImageNotSupported';
 
+// New component for the research links section
+const ResearchLinksSection = ({ symbols }) => {
+  // Define the research websites and their base URLs (excluding those needing 'bolsa id' for now)
+  const researchSites = [
+    { name: 'GuruFocus', baseUrl: 'https://www.gurufocus.com/stock/' },
+    { name: 'Seeking Alpha', baseUrl: 'https://seekingalpha.com/symbol/' },
+    { name: 'Yahoo Finance', baseUrl: 'https://finance.yahoo.com/quote/' },
+    { name: 'Finviz', baseUrl: 'https://finviz.com/quote.ashx?t=' },
+  ];
+
+  // If no symbols are available, don't render this section
+  if (!symbols || symbols.length === 0) {
+    return null;
+  }
+
+  return (
+    <Paper elevation={3} sx={{ p: 3, mb: 4, bgcolor: 'background.paper', borderRadius: 2 }}>
+      <Typography variant="h5" gutterBottom sx={{ color: 'text.primary', textAlign: 'center', mb: 2 }}>
+        Quick Research Links
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 3, textAlign: 'center' }}>
+        Click on a symbol below to open multiple research pages in new tabs.
+      </Typography>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, justifyContent: 'center' }}>
+        {symbols.map((symbol) => (
+          <Button
+            key={symbol}
+            variant="contained" // Using contained for a more prominent button
+            size="small"
+            sx={{
+              textTransform: 'none',
+              borderRadius: 2, // Slightly rounded buttons
+              minWidth: '80px', // Ensure buttons have a minimum width
+              bgcolor: 'primary.main', // Use primary color from theme
+              color: 'white',
+              '&:hover': {
+                bgcolor: 'primary.dark', // Darker primary on hover
+              },
+            }}
+            onClick={() => {
+              // Open a new tab for each research site for the clicked symbol
+              researchSites.forEach(site => {
+                const url = `${site.baseUrl}${symbol}`;
+                window.open(url, '_blank');
+              });
+            }}
+          >
+            {symbol}
+          </Button>
+        ))}
+      </Box>
+    </Paper>
+  );
+};
+
 export default function NewsSection({ portfolioData = [] }) {
-  // Renamed state to hold all relevant latest news
   const [allLatestNews, setAllLatestNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -34,26 +89,23 @@ export default function NewsSection({ portfolioData = [] }) {
         if (!response.ok) {
           throw new Error(json.error || `Failed to fetch news for ${symbol}.`);
         }
-        // We only want the single latest news article for each symbol
-        return json.length > 0 ? { ...json[0], symbol: symbol } : null; // Attach symbol for easier display
+        return json.length > 0 ? { ...json[0], symbol: symbol } : null;
       } catch (err) {
         console.error(`Error fetching news for ${symbol}:`, err);
-        return { error: err.message, symbol: symbol }; // Return error info with symbol
+        return { error: err.message, symbol: symbol };
       }
     };
 
     const loadNews = async () => {
       setLoading(true);
       setError(null);
-      setAllLatestNews([]); // Clear any previously loaded news
+      setAllLatestNews([]);
 
       if (portfolioData.length === 0) {
         setLoading(false);
         return;
       }
 
-      // Filter for symbols with non-zero profitLoss (gainers and losers)
-      // Ensure we only process unique symbols
       const relevantSymbols = [...new Set(
         portfolioData
           .filter(asset => asset.profitLoss !== 0 && asset.symbol)
@@ -68,7 +120,6 @@ export default function NewsSection({ portfolioData = [] }) {
       const newsPromises = relevantSymbols.map(symbol => fetchNewsForSymbol(symbol));
 
       try {
-        // Use Promise.allSettled to handle individual news fetch failures gracefully
         const results = await Promise.allSettled(newsPromises);
 
         let collectedNews = [];
@@ -84,7 +135,6 @@ export default function NewsSection({ portfolioData = [] }) {
           }
         });
 
-        // Sort collected news by datetime (most recent first)
         collectedNews.sort((a, b) => b.datetime - a.datetime);
 
         setAllLatestNews(collectedNews);
@@ -100,17 +150,15 @@ export default function NewsSection({ portfolioData = [] }) {
       }
     };
 
-    // Only attempt to load news if there's portfolio data
     if (portfolioData.length > 0) {
       loadNews();
     } else {
-      setLoading(false); // If no portfolio data, stop loading
-      setAllLatestNews([]); // Clear any existing news
+      setLoading(false);
+      setAllLatestNews([]);
       setError(null);
     }
-  }, [portfolioData]); // Re-run effect when portfolioData changes
+  }, [portfolioData]);
 
-  // Consolidated component to display all latest news
   const LatestNewsCard = ({ newsItems }) => (
     <Paper elevation={3} sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Typography variant="h6" gutterBottom color="text.primary" sx={{ textAlign: 'center' }}>
@@ -122,7 +170,6 @@ export default function NewsSection({ portfolioData = [] }) {
             <React.Fragment key={news.id || index}>
               <ListItem alignItems="flex-start" sx={{ mb: 1 }}>
                 <Box display="flex" flexDirection="column" width="100%">
-                  {/* Display the stock symbol for this news item */}
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
                     {news.symbol}
                   </Typography>
@@ -159,8 +206,8 @@ export default function NewsSection({ portfolioData = [] }) {
                         mb: 0.5,
                       }}
                       onError={(e) => {
-                        e.target.onerror = null; // Prevent infinite loop
-                        e.target.style.display = 'none'; // Hide broken image
+                        e.target.onerror = null;
+                        e.target.style.display = 'none';
                       }}
                     />
                   ) : (
@@ -199,11 +246,21 @@ export default function NewsSection({ portfolioData = [] }) {
     </Paper>
   );
 
+  // Extract unique symbols from portfolioData to pass to ResearchLinksSection
+  const uniquePortfolioSymbols = [...new Set(
+    portfolioData
+      .map(asset => asset.symbol)
+      .filter(Boolean) // Filter out any null/undefined symbols
+  )];
+
   return (
     <Container maxWidth="xl" sx={{ mt: 4 }}>
       <Typography variant="h4" color="white" gutterBottom sx={{ textAlign: 'center', mb: 4 }}>
         Market News & Insights
       </Typography>
+
+      {/* Render the new Research Links Section here */}
+      <ResearchLinksSection symbols={uniquePortfolioSymbols} />
 
       {loading && (
         <Box display="flex" justifyContent="center" alignItems="center" height="200px">
@@ -216,7 +273,6 @@ export default function NewsSection({ portfolioData = [] }) {
         <Alert severity="info">Please upload your portfolio assets to see relevant news.</Alert>
       )}
 
-      {/* Display the single LatestNewsCard for all news */}
       {!loading && !error && portfolioData.length > 0 && (
         <Grid container spacing={3}>
           <Grid item xs={12}>
