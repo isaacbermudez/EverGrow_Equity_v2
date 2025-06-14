@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useState } from 'react';
 import {
   Container,
@@ -10,11 +11,14 @@ import {
   createTheme,
   Paper,
 } from '@mui/material';
-import FileUpload from './components/FileUpload';
-import PortfolioDashboard from './components/PortfolioDashboard';
+import { BrowserRouter, Routes, Route } from 'react-router-dom'; // Fixed this line
+import Sidebar from './components/Sidebar';
+import HomeContent from './components/HomeContent';
+import NewsSection from './components/NewsSection';
 import { teal, blueGrey } from '@mui/material/colors';
 
-// Define a custom theme for a modern dark look
+const drawerWidth = 240;
+
 const theme = createTheme({
   palette: {
     mode: 'dark',
@@ -25,7 +29,7 @@ const theme = createTheme({
       main: blueGrey[300],
     },
     background: {
-      default: '#121212', // This is your desired overall background color
+      default: '#121212',
       paper: '#1E1E1E',
     },
     text: {
@@ -65,16 +69,12 @@ const theme = createTheme({
         },
         body: {
           height: '100%',
-          backgroundColor: '#121212', // Ensures the body itself is dark
-          // REMOVED flex properties from body to avoid potential conflicts
-          // display: 'flex',
-          // flexDirection: 'column',
-          // alignItems: 'center',
+          backgroundColor: '#121212',
         },
         '#root': {
           height: '100%',
           width: '100%',
-          minHeight: '100vh', // Ensure #root always takes full viewport height
+          minHeight: '100vh',
         },
       },
     },
@@ -132,66 +132,54 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-
-      {/* NEW: Outer Box to ensure consistent background and full height for the entire app */}
-      {/* This Box will apply the default background color and handle the main centering */}
-      <Box
-        sx={{
-          bgcolor: 'background.default', // Use theme's default background color for consistency
-          minHeight: '100vh', // Ensure it covers the full viewport height
-          display: 'flex', // Use flexbox here to center the AppBar and Container
-          flexDirection: 'column',
-          alignItems: 'center', // Center content horizontally within this Box
-          width: '100%', // Ensure it takes full width
-        }}
-      >
-        <AppBar
-          position="static"
-          elevation={0}
-          sx={{
-            backgroundColor: teal[700],
-            width: '100%',
-            maxWidth: 'xl', // Changed to 'xl' for consistency with main container
-            mx: 'auto',
-            mb: 4,
-          }}
-        >
-          <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'white'}}>
-              EverGrow Portfolio
-            </Typography>
-            {/*{remaining !== null && (
-              <Typography variant="subtitle1" sx={{ color: 'white' }}>
-                API Requests Remaining: <strong>{remaining}</strong>
+      <BrowserRouter>
+        <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+          <AppBar
+            position="fixed"
+            elevation={0}
+            sx={{
+              backgroundColor: teal[700],
+              zIndex: (theme) => theme.zIndex.drawer + 1,
+              width: `calc(100% - ${drawerWidth}px)`,
+              ml: `${drawerWidth}px`,
+            }}
+          >
+            <Toolbar>
+              <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'white' }}>
+                EverGrow Portfolio
               </Typography>
-            )}*/}
-          </Toolbar>
-        </AppBar>
+            </Toolbar>
+          </AppBar>
 
-        <Container
-          maxWidth="xl" // This is correctly set to 'xl'
-          sx={{
-            mt: 0,
-            mb: 4,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            mx: 'auto',
-            flexGrow: 1, // Allows this container to expand vertically if needed
-          }}
-        >
-          {/* The Upload Assets Paper can remain at maxWidth: 400 for a consistent look */}
-          <Paper elevation={3} sx={{ p: 3, mb: 4, width: '100%', maxWidth: 400 }}>
-            <FileUpload onUpload={handleAssets} />
-          </Paper>
+          <Sidebar />
 
-          {/* Removed maxWidth: 800 from this Paper component */}
-          <Paper elevation={3} sx={{ p: 3, width: '100%' }}>
-            <PortfolioDashboard rows={data} />
-          </Paper>
-          
-        </Container>
-      </Box>
+          <Box
+            component="main"
+            sx={{
+              flexGrow: 1,
+              p: 3,
+              ml: `${drawerWidth}px`,
+              width: `calc(100% - ${drawerWidth}px)`,
+              mt: '64px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            <Toolbar />
+            <Routes>
+              <Route
+                path="/"
+                element={<HomeContent data={data} handleAssets={handleAssets} />}
+              />
+              <Route
+                path="/news"
+                element={<NewsSection portfolioData={data} />}
+              />
+            </Routes>
+          </Box>
+        </Box>
+      </BrowserRouter>‰
     </ThemeProvider>
   );
 }
