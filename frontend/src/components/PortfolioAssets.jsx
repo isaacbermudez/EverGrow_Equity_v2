@@ -1,4 +1,4 @@
-// src/components/PortfolioDashboard.jsx
+// src/components/PortfolioAssets.jsx
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -24,7 +24,7 @@ import EtfIcon from '../assets/ETF.png';
 // Helper: if not a number, fall back to 0
 const safeNum = (n) => (typeof n === 'number' ? n : 0);
 
-export default function PortfolioDashboard({ rows = [] }) {
+export default function PortfolioAssets({ rows = [] }) {
   // State for current page (0 for positives, 1 for negatives)
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -215,21 +215,9 @@ export default function PortfolioDashboard({ rows = [] }) {
   };
 
   return (
-    // The main Box of PortfolioDashboard, applying the gradient background
+    // The main Box of PortfolioAssets, applying the gradient background
     <Box p={3} sx={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)' }}>
-      {/* Header */}
-      <Box textAlign="center" mb={4}>
-        <Typography variant="h4" gutterBottom color="white">
-          Portfolio Dashboard<Typography variant="body2" color="text.secondary"><Zap
-            size={16}
-            color="#f9a825"
-            style={{ marginRight: 8, animation: 'pulse 1s infinite' }}
-          />{rows.length} position(s)</Typography>
-        </Typography>
-      </Box>
-
-      {/* NEW: Box for Summary Cards */}
-      <Box mb={4}> {/* mb for margin-bottom to separate it from the next section */}
+        <Box mb={4}> {/* mb for margin-bottom to separate it from the next section */}
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}>
             <SummaryCard
