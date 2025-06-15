@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Box, Alert, Paper, Typography, CircularProgress } from '@mui/material';
 
-export default function FileUpload({ onUpload }) {
+export default function FileUpload({ onUpload, disabled = false }) { // Accept disabled prop
   const [error, setError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -9,13 +9,12 @@ export default function FileUpload({ onUpload }) {
   const processFile = async (file) => {
     if (!file) return;
 
-    setIsLoading(true); // Set loading to true when processing starts
-    setError(null); // Clear previous errors
+    setIsLoading(true);
+    setError(null);
 
     if (!file.name.endsWith('.json')) {
       setError("Please upload a JSON file.");
-      // No need to call onUpload here as it's a frontend validation error
-      setIsLoading(false); // Set loading to false if there's an error
+      setIsLoading(false);
       return;
     }
     
@@ -24,31 +23,30 @@ export default function FileUpload({ onUpload }) {
       const arr = JSON.parse(text);
       if (!Array.isArray(arr)) throw new Error("Not an array");
 
-      // --- CRITICAL CHANGE HERE ---
-      // Await the onUpload function.
-      // onUpload MUST return a Promise that resolves when the backend call is complete.
-      await onUpload(arr); // Now processFile waits for onUpload to finish
-
-      setError(null); // Clear error if everything succeeded
+      await onUpload(arr);
+      setError(null);
     } catch (e) {
-      // Catch errors from file parsing AND from the onUpload promise rejection
       console.error("File processing or upload error:", e);
       setError("Error processing or uploading file. Please check format or try again.");
-      onUpload([]); // You might still want to call onUpload with an empty array on error
+      onUpload([]); // Call onUpload with empty array on error, important for App.jsx state management
     } finally {
-      setIsLoading(false); // Set loading to false when all operations (frontend and backend) finish
+      setIsLoading(false);
     }
   };
 
   const handleFile = async (e) => {
     const f = e.target.files[0];
-    await processFile(f);
+    if (f) { // Ensure file exists before processing
+      await processFile(f);
+    }
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragOver(true);
+    if (!disabled) { // Only set drag-over state if not disabled
+      setIsDragOver(true);
+    }
   };
 
   const handleDragLeave = (e) => {
@@ -62,6 +60,8 @@ export default function FileUpload({ onUpload }) {
     e.stopPropagation();
     setIsDragOver(false);
     
+    if (disabled) return; // If disabled, do nothing on drop
+
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
       await processFile(files[0]);
@@ -69,7 +69,7 @@ export default function FileUpload({ onUpload }) {
   };
 
   return (
-    <Box mb={3}>
+    <Box mb={1} sx={{ width: { xs: '100%', md: 'auto' } }}> {/* Adjusted width for better layout */}
       <Paper
         elevation={isDragOver ? 4 : 1}
         onDragOver={handleDragOver}
@@ -77,14 +77,14 @@ export default function FileUpload({ onUpload }) {
         onDrop={handleDrop}
         sx={{
           p: 3,
-          border: isDragOver ? '2px dashed #1976d2' : '2px dashed #ccc',
-          backgroundColor: isDragOver ? '#f3f8ff' : '#fafafa',
+          border: isDragOver && !disabled ? '2px dashed #1976d2' : '2px dashed #ccc', // Color change only if not disabled
+          backgroundColor: disabled ? '#333' : (isDragOver ? '#f3f8ff' : '#fafafa'), // Grey out if disabled
           textAlign: 'center',
-          cursor: isLoading ? 'not-allowed' : 'pointer',
+          cursor: isLoading || disabled ? 'not-allowed' : 'pointer', // Cursor change
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
-            backgroundColor: '#f5f5f5',
-            borderColor: '#999'
+            backgroundColor: disabled ? '#333' : '#f5f5f5', // No hover effect if disabled
+            borderColor: disabled ? '#ccc' : '#999' // No border change if disabled
           }
         }}
       >
@@ -98,21 +98,22 @@ export default function FileUpload({ onUpload }) {
         ) : (
           <>
             <Typography variant="body1" color="textSecondary" mb={2}>
-              Drag and drop your JSON file here, or click to browse
+              {disabled ? "Portfolio data loaded." : "Drag and drop your JSON file here, or click to browse"}
             </Typography>
             
             <Button
               variant="contained"
               component="label"
-              disabled={isLoading}
+              disabled={isLoading || disabled} // Disable button based on isLoading or prop
               sx={{ mb: 1 }}
             >
-              Upload Portfolio JSON
+              {disabled ? "Data Loaded" : "Upload Portfolio JSON"}
               <input
                 hidden
                 type="file"
                 accept=".json"
                 onChange={handleFile}
+                disabled={isLoading || disabled} // Also disable the actual input
               />
             </Button>
           </>

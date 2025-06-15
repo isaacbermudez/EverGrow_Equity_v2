@@ -7,7 +7,6 @@ import {
   Box,
   Typography
 } from '@mui/material';
-import FileUpload from './FileUpload';
 import PortfolioAssets from './PortfolioAssets';
 import PortfolioCharts from './PortfolioCharts';
 
@@ -25,14 +24,8 @@ export default function HomeContent({ data, handleAssets }) {
         flexGrow: 1,
       }}
     >
-      {/* Combined Grid for FileUpload, PortfolioCharts, and PortfolioAssets */}
+      {/* Combined Grid for PortfolioCharts, and PortfolioAssets */}
       <Grid container spacing={3} sx={{ width: '100%', mb: 4 }}>
-        {/* FileUpload as a mini section in the top-left */}
-        <Grid item xs={12} sm={6} md={4} lg={3}> {/* Adjusting size for "mini" */}
-          <Paper elevation={3} sx={{ p: 2, height: '100%' }}> {/* Reduced padding for smaller appearance */}
-            <FileUpload onUpload={handleAssets} />
-          </Paper>
-        </Grid>
 
         {/* PortfolioCharts and PortfolioAssets will take the remaining space */}
         <Grid item xs={12} sm={6} md={8} lg={9}> {/* This Grid item takes the remaining space */}
