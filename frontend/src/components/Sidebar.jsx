@@ -35,7 +35,7 @@ export default function Sidebar() {
         '& .MuiDrawer-paper': {
           width: drawerWidth,
           boxSizing: 'border-box',
-          bgcolor: teal[800], // Darker teal for sidebar background
+          bgcolor: teal[900], // Darker teal for sidebar background
           color: 'white',
           borderRight: '1px solid rgba(255,255,255,0.1)',
         },
@@ -45,7 +45,8 @@ export default function Sidebar() {
     >
       <Toolbar>
         <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 700, color: 'white' }}>
-          Navigation
+        
+        
         </Typography>
       </Toolbar>
       <Divider sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} />
