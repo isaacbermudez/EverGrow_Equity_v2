@@ -1,31 +1,37 @@
 // src/App.jsx
-import React, { useState, useEffect } from 'react'; // Added useEffect
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
   Box,
-  AppBar,
-  Toolbar,
+  // AppBar, // Removed AppBar as its content is moving
+  // Toolbar, // Removed Toolbar as its content is moving
   CssBaseline,
   ThemeProvider,
   createTheme,
   Paper,
   Chip,
-  IconButton, // Added IconButton for the Reset/Refresh
-  Button, // Added Button for the Reset/Refresh
-  Alert // Added Alert for feedback
+  IconButton,
+  Button,
+  Alert
 } from '@mui/material';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import HomeContent from './components/HomeContent';
 import NewsSection from './components/NewsSection';
-import FileUpload from './components/FileUpload'; // Import FileUpload component
+import FinancialsSection from './components/FinancialsSection';
+import FileUpload from './components/FileUpload'; // Still needed as it's passed to Sidebar
+import WealthSection from './components/WealthSection';
+import ChatWidget from './components/ChatWidget'; // <--- NEW: Import ChatWidget
+
 import { teal, blueGrey } from '@mui/material/colors';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ClearIcon from '@mui/icons-material/Clear';
-const drawerWidth = 240;
+
+// Standardize drawerWidth
+const drawerWidth = 240; // Using 240px from App.jsx as standard
 
 const theme = createTheme({
   palette: {
@@ -93,13 +99,6 @@ const theme = createTheme({
         },
       },
     },
-    MuiAppBar: {
-      styleOverrides: {
-        colorPrimary: {
-          backgroundColor: teal[900],
-        },
-      },
-    },
     MuiPaper: {
       styleOverrides: {
         root: {
@@ -112,7 +111,6 @@ const theme = createTheme({
 });
 
 export default function App() {
-  // Initialize state from localStorage or default to empty
   const [portfolioData, setPortfolioData] = useState(() => {
     try {
       const storedData = localStorage.getItem('portfolioAnalysisData');
@@ -123,7 +121,6 @@ export default function App() {
     }
   });
 
-  // Keep track of the raw uploaded assets for potential future re-analysis if needed
   const [uploadedAssets, setUploadedAssets] = useState(() => {
     try {
       const storedAssets = localStorage.getItem('uploadedPortfolioAssets');
@@ -134,19 +131,16 @@ export default function App() {
     }
   });
 
-  // This state will control whether the FileUpload component is active or disabled
   const [isDataLoaded, setIsDataLoaded] = useState(portfolioData.length > 0);
 
-  // Effect to save data to localStorage whenever portfolioData or uploadedAssets changes
   useEffect(() => {
     localStorage.setItem('portfolioAnalysisData', JSON.stringify(portfolioData));
     localStorage.setItem('uploadedPortfolioAssets', JSON.stringify(uploadedAssets));
-    setIsDataLoaded(portfolioData.length > 0); // Update isDataLoaded status
+    setIsDataLoaded(portfolioData.length > 0);
   }, [portfolioData, uploadedAssets]);
 
 
   const handleAssets = async (assets) => {
-    // Save the raw assets received from FileUpload for persistence
     setUploadedAssets(assets);
 
     try {
@@ -159,13 +153,13 @@ export default function App() {
       if (!res.ok) {
         throw new Error(json.error || 'Failed to analyze portfolio data.');
       }
-      setPortfolioData(json.results || []); // Update the analyzed data
+      setPortfolioData(json.results || []);
     } catch (e) {
       console.error("Error in handleAssets:", e);
-      alert(e.message);
-      setPortfolioData([]); // Clear data on error
-      setUploadedAssets([]); // Also clear raw assets on error
-      throw e; // Re-throw to propagate error to FileUpload component
+      alert(e.message); // In a real app, you'd show a more user-friendly error message
+      setPortfolioData([]);
+      setUploadedAssets([]);
+      throw e;
     }
   };
 
@@ -174,13 +168,11 @@ export default function App() {
     localStorage.removeItem('uploadedPortfolioAssets');
     setPortfolioData([]);
     setUploadedAssets([]);
-    setIsDataLoaded(false); // Enable upload again
+    setIsDataLoaded(false);
   };
 
   const handleRefreshData = async () => {
     if (uploadedAssets.length > 0) {
-      // Re-run analysis with the stored uploaded assets
-      // This will trigger the API call again and update localStorage via useEffect
       await handleAssets(uploadedAssets);
     } else {
       alert("No previously uploaded data to refresh.");
@@ -193,62 +185,32 @@ export default function App() {
       <CssBaseline />
       <BrowserRouter>
         <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-          <AppBar
-            position="fixed"
-            elevation={0}
-            sx={{
-              backgroundColor: teal[900],
-              zIndex: (theme) => theme.zIndex.drawer + 1,
-              width: `calc(100% - ${drawerWidth}px)`,
-              ml: `${drawerWidth}px`,
-            }}
-          >
-            <Toolbar sx={{ minHeight: '64px !important', gap: 2 }}>
-              <Chip
-                icon={isDataLoaded ? <CheckCircleIcon /> : <CloudUploadIcon />}
-                label={isDataLoaded ? "Loaded" : "Upload JSON"}
-                onClick={() => !isDataLoaded && document.getElementById('file-input').click()}
-                sx={{
-                  backgroundColor: teal[900],
-                  color: 'white',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  '&:hover': !isDataLoaded && {
-                    backgroundColor: teal[900],
-                  },
-                  cursor: isDataLoaded ? 'default' : 'pointer'
-                }}
-              />
-              <FileUpload onUpload={handleAssets} disabled={isDataLoaded} hidden />
+          {/* The AppBar that was here has been removed as its content is moving to Sidebar */}
 
-              {isDataLoaded && (
-                <>
-                  <IconButton onClick={handleRefreshData} sx={{ color: 'white' }}>
-                    <RefreshIcon />
-                  </IconButton>
-                  <IconButton onClick={handleClearData} sx={{ color: 'white' }}>
-                    <ClearIcon />
-                  </IconButton>
-                </>
-              )}
-            </Toolbar>
-          </AppBar>
-
-          <Sidebar />
+          <Sidebar
+            drawerWidth={drawerWidth} // Pass drawerWidth for consistency
+            isDataLoaded={isDataLoaded}
+            onUploadAssets={handleAssets} // Renamed for clarity as a prop
+            onClearData={handleClearData} // Renamed for clarity as a prop
+            onRefreshData={handleRefreshData} // Renamed for clarity as a prop
+            // uploadedAssets is not directly used by Sidebar's UI, only handleAssets needs it internally
+            FileUploadComponent={FileUpload} // Pass the FileUpload component itself
+          />
 
           <Box
             component="main"
             sx={{
               flexGrow: 1,
               p: 3,
-              ml: `${drawerWidth}px`,
+              ml: `${drawerWidth}px`, // Maintains space for the sidebar
               width: `calc(100% - ${drawerWidth}px)`,
-              mt: '64px',
+              // mt: '64px', // Removed as there's no fixed AppBar at the top pushing content down
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
             }}
           >
-            <Toolbar /> {/* This is important to push content below the fixed AppBar */}
+            {/* <Toolbar /> Removed this placeholder Toolbar as the App Bar is gone */}
 
             <Routes>
               <Route
@@ -259,9 +221,18 @@ export default function App() {
                 path="/news"
                 element={<NewsSection portfolioData={portfolioData} />}
               />
+              <Route
+                path="/financials"
+                element={<FinancialsSection portfolioData={portfolioData} />}
+              />
+              <Route
+                path="/wealth"
+                element={<WealthSection portfolioData={portfolioData} />}
+              />
             </Routes>
           </Box>
         </Box>
+        <ChatWidget /> {/* <--- NEW: Add the ChatWidget here */}
       </BrowserRouter>
     </ThemeProvider>
   );

@@ -255,10 +255,6 @@ export default function NewsSection({ portfolioData = [] }) {
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4 }}>
-      <Typography variant="h4" color="white" gutterBottom sx={{ textAlign: 'center', mb: 4 }}>
-        Market News & Insights
-      </Typography>
-
       {/* Render the new Research Links Section here */}
       <ResearchLinksSection symbols={uniquePortfolioSymbols} />
 

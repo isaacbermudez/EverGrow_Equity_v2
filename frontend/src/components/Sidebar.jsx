@@ -10,21 +10,31 @@ import {
   Toolbar,
   Typography,
   Divider,
-  Box
+  Box,
+  Chip, // Added Chip
+  IconButton, // Added IconButton
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+// New imports for the moved functionality
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import ClearIcon from '@mui/icons-material/Clear';
+import FileUpload from './FileUpload'; // Import FileUpload component
+
 import { NavLink } from 'react-router-dom';
 import { teal } from '@mui/material/colors';
 
-const drawerWidth = 180;
-
-export default function Sidebar() {
+// drawerWidth now comes from props, defaulting to 240 if not provided
+export default function Sidebar({ drawerWidth = 240, isDataLoaded, onUploadAssets, onClearData, onRefreshData }) {
   const navItems = [
     { text: 'Home', icon: <DashboardIcon sx={{ color: 'white' }} />, path: '/' },
     { text: 'News', icon: <NewspaperIcon sx={{ color: 'white' }} />, path: '/news' },
-    { text: 'Financials', icon: <AccountBalanceIcon sx={{ color: 'white' }} />, path: '/Financials' },
+    { text: 'Financials', icon: <AccountBalanceIcon sx={{ color: 'white' }} />, path: '/financials' },
+    { text: 'Wealth', icon: <FavoriteIcon sx={{ color: 'white' }} />, path: '/wealth' },
   ];
 
   return (
@@ -35,7 +45,7 @@ export default function Sidebar() {
         '& .MuiDrawer-paper': {
           width: drawerWidth,
           boxSizing: 'border-box',
-          bgcolor: teal[900], // Darker teal for sidebar background
+          bgcolor: teal[900],
           color: 'white',
           borderRight: '1px solid rgba(255,255,255,0.1)',
         },
@@ -43,30 +53,48 @@ export default function Sidebar() {
       variant="permanent"
       anchor="left"
     >
+      {/* Top Toolbar for the Bible Verse */}
       <Toolbar>
-        <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 700, color: 'white' }}>
-        
-        
+        <Typography
+          variant="caption"
+          noWrap={false}
+          component="div"
+          sx={{
+            fontWeight: 500,
+            color: 'rgba(255,255,255,0.8)',
+            fontSize: '0.8rem', // Slightly adjusted for compact sidebar
+            lineHeight: 1.4,
+            textAlign: 'center',
+            p: 1
+          }}
+        >
+          "Mirad, y guardaos de toda avaricia;<br/>porque la vida del hombre no consiste en la abundancia de los bienes que posee."<br/>
+          <span style={{ fontSize: '0.8rem', display: 'block', marginTop: '4px', fontStyle: 'italic' }}>
+            — Lucas 12:15 (RV1960)
+          </span>
         </Typography>
       </Toolbar>
+
       <Divider sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} />
+
+      {/* Navigation List */}
       <List>
         {navItems.map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
               component={NavLink}
               to={item.path}
-              exact={item.path === '/'} // Use exact for home path
+              exact={item.path === '/'}
               sx={{
                 '&.active': {
-                  bgcolor: teal[600], // Highlight active link
+                  bgcolor: teal[600],
                   '& .MuiListItemIcon-root, & .MuiListItemText-primary': {
-                    color: 'white', // Ensure icon/text are white when active
+                    color: 'white',
                     fontWeight: 'bold',
                   },
                 },
                 '&:hover': {
-                  bgcolor: teal[700], // Hover effect
+                  bgcolor: teal[700],
                 },
               }}
             >
@@ -78,6 +106,45 @@ export default function Sidebar() {
           </ListItem>
         ))}
       </List>
+
+      {/* New Section for Data Management (Upload, Refresh, Clear) */}
+      <Divider sx={{ bgcolor: 'rgba(255,255,255,0.2)', my: 1 }} /> {/* Divider for separation */}
+      <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+        <Chip
+          icon={isDataLoaded ? <CheckCircleIcon sx={{ color: 'white' }} /> : <CloudUploadIcon sx={{ color: 'white' }} />}
+          label={isDataLoaded ? "Data Loaded" : "Upload JSON"}
+          onClick={() => !isDataLoaded && document.getElementById('file-input').click()}
+          sx={{
+            backgroundColor: teal[700], // Slightly lighter teal for chip background
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.3)',
+            width: '100%', // Make chip span full width
+            justifyContent: 'flex-start', // Align icon and text to start
+            '&:hover': !isDataLoaded && {
+              backgroundColor: teal[600], // Darker hover for better feedback
+            },
+            cursor: isDataLoaded ? 'default' : 'pointer',
+            fontSize: '0.85rem',
+            py: 0.5, // Increase vertical padding slightly for better touch target
+          }}
+        />
+        {/* FileUpload component is hidden and triggered by the Chip */}
+        <FileUpload onUpload={onUploadAssets} disabled={isDataLoaded} hidden />
+
+        {isDataLoaded && (
+          <Box sx={{ display: 'flex', justifyContent: 'space-around', width: '100%', mt: 0.5 }}>
+            <IconButton onClick={onRefreshData} sx={{ color: 'white', '&:hover': { bgcolor: teal[700] } }}>
+              <RefreshIcon />
+              <Typography variant="caption" sx={{ ml: 0.5, color: 'white' }}>Refresh</Typography>
+            </IconButton>
+            <IconButton onClick={onClearData} sx={{ color: 'white', '&:hover': { bgcolor: teal[700] } }}>
+              <ClearIcon />
+              <Typography variant="caption" sx={{ ml: 0.5, color: 'white' }}>Clear</Typography>
+            </IconButton>
+          </Box>
+        )}
+      </Box>
+
       <Box sx={{ flexGrow: 1 }} /> {/* Pushes content to top */}
       <Box sx={{ p: 2, textAlign: 'center', fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)' }}>
         © 2025 EverGrow

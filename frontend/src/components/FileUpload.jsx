@@ -17,7 +17,7 @@ export default function FileUpload({ onUpload, disabled = false }) { // Accept d
       setIsLoading(false);
       return;
     }
-    
+
     try {
       const text = await file.text();
       const arr = JSON.parse(text);
@@ -36,7 +36,7 @@ export default function FileUpload({ onUpload, disabled = false }) { // Accept d
 
   const handleFile = async (e) => {
     const f = e.target.files[0];
-    if (f) { // Ensure file exists before processing
+    if (f) {
       await processFile(f);
     }
   };
@@ -44,7 +44,7 @@ export default function FileUpload({ onUpload, disabled = false }) { // Accept d
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!disabled) { // Only set drag-over state if not disabled
+    if (!disabled) {
       setIsDragOver(true);
     }
   };
@@ -59,8 +59,8 @@ export default function FileUpload({ onUpload, disabled = false }) { // Accept d
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
-    
-    if (disabled) return; // If disabled, do nothing on drop
+
+    if (disabled) return;
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
@@ -68,8 +68,13 @@ export default function FileUpload({ onUpload, disabled = false }) { // Accept d
     }
   };
 
+  // Conditionally render the entire component based on the 'disabled' prop
+  if (disabled) {
+    return null; // Return null if the component should be hidden
+  }
+
   return (
-    <Box mb={1} sx={{ width: { xs: '100%', md: 'auto' } }}> {/* Adjusted width for better layout */}
+    <Box mb={1} sx={{ width: { xs: '100%', md: 'auto' } }}>
       <Paper
         elevation={isDragOver ? 4 : 1}
         onDragOver={handleDragOver}
@@ -77,14 +82,14 @@ export default function FileUpload({ onUpload, disabled = false }) { // Accept d
         onDrop={handleDrop}
         sx={{
           p: 3,
-          border: isDragOver && !disabled ? '2px dashed #1976d2' : '2px dashed #ccc', // Color change only if not disabled
-          backgroundColor: disabled ? '#333' : (isDragOver ? '#f3f8ff' : '#fafafa'), // Grey out if disabled
+          border: isDragOver ? '2px dashed #1976d2' : '2px dashed #ccc',
+          backgroundColor: isDragOver ? '#f3f8ff' : '#fafafa',
           textAlign: 'center',
-          cursor: isLoading || disabled ? 'not-allowed' : 'pointer', // Cursor change
+          cursor: isLoading ? 'not-allowed' : 'pointer',
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
-            backgroundColor: disabled ? '#333' : '#f5f5f5', // No hover effect if disabled
-            borderColor: disabled ? '#ccc' : '#999' // No border change if disabled
+            backgroundColor: '#f5f5f5',
+            borderColor: '#999'
           }
         }}
       >
@@ -98,28 +103,28 @@ export default function FileUpload({ onUpload, disabled = false }) { // Accept d
         ) : (
           <>
             <Typography variant="body1" color="textSecondary" mb={2}>
-              {disabled ? "Portfolio data loaded." : "Drag and drop your JSON file here, or click to browse"}
+              Drag and drop your JSON file here, or click to browse
             </Typography>
-            
+
             <Button
               variant="contained"
               component="label"
-              disabled={isLoading || disabled} // Disable button based on isLoading or prop
+              disabled={isLoading}
               sx={{ mb: 1 }}
             >
-              {disabled ? "Data Loaded" : "Upload Portfolio JSON"}
+              Upload Portfolio JSON
               <input
                 hidden
                 type="file"
                 accept=".json"
                 onChange={handleFile}
-                disabled={isLoading || disabled} // Also disable the actual input
+                disabled={isLoading}
               />
             </Button>
           </>
         )}
       </Paper>
-      
+
       {error && (
         <Box mt={2}>
           <Alert severity="error">{error}</Alert>
