@@ -9,16 +9,20 @@ const safeNum = (n) => (typeof n === 'number' ? n : 0);
 
 const COLORS = [
     '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28DFF', '#FF6384',
-    '#36A2EB', '#FFCE56', '#8A2BE2', '#00CED1', '#FF4500', '#DA70D6'
+    '#36A2EB', '#FFCE56', '#8A2BE2', '#00CED1', '#FF4500', '#DA70D6',
+    '#E0BBE4', '#957DAD', '#D291BC', '#FFC72C', '#FF6B6B', '#7A73F0'
 ];
 
+// Adjusted to show ONLY percentage labels on the chart
 const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
     const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
 
-    // Only show label if percentage is meaningful (e.g., > 3%)
-    if (percent * 100 > 3) {
+    const percentage = (percent * 100).toFixed(0);
+
+    // Only display label if percentage is greater than a threshold (e.g., 3%) to avoid clutter
+    if (percent * 100 > 3) { // Adjust this threshold as needed
         return (
             <text
                 x={x}
@@ -29,15 +33,16 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
                 fontSize="11"
                 fontWeight="600"
             >
-                {`${(percent * 100).toFixed(0)}%`}
+                {`${percentage}%`}
             </text>
         );
     }
-    return null;
+    return null; // Hide label for very small slices
 };
 
-const CustomTooltip = ({ active, payload, label }) => {
+const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
+        const data = payload[0].payload;
         return (
             <Paper
                 elevation={8}
@@ -49,13 +54,13 @@ const CustomTooltip = ({ active, payload, label }) => {
                 }}
             >
                 <Typography variant="body2" sx={{ color: 'white', fontWeight: 'bold' }}>
-                    {payload[0].name}
+                    {data.name}
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#00C49F' }}>
-                    Value: ${payload[0].value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Value: ${data.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#FFBB28' }}>
-                    Percentage: {((payload[0].value / payload[0].payload.total) * 100).toFixed(1)}%
+                    Percentage: {((data.value / data.total) * 100).toFixed(1)}%
                 </Typography>
             </Paper>
         );
@@ -71,29 +76,21 @@ export default function PortfolioCharts({ rows = [] }) {
         return acc + (safeNum(stock.currentPrice) * safeNum(stock.holdings));
     }, 0);
 
-    // Calculate total invested amount (Cost Basis) - NEW CALCULATION
+    // Calculate total invested amount (Cost Basis)
     const totalInvestedAmount = rows.reduce((acc, stock) => {
         return acc + safeNum(stock.CI);
     }, 0);
 
-    // Data aggregation for Category Chart
-    const categoryData = rows.reduce((acc, stock) => {
-        const category = stock.category || 'Uncategorized';
-        const marketValue = safeNum(stock.currentPrice) * safeNum(stock.holdings);
-        if (!acc[category]) {
-            acc[category] = 0;
-        }
-        acc[category] += marketValue;
-        return acc;
-    }, {});
+    // Calculate total profit/loss (Market Value - Invested Amount)
+    const totalProfitLoss = totalValue - totalInvestedAmount;
 
-    const categoryChartData = Object.keys(categoryData)
-        .map(name => ({
-            name,
-            value: categoryData[name],
-            total: totalValue
-        }))
-        .sort((a, b) => b.value - a.value); // Sort by value descending
+    // Count unique categories for summary stat (no longer generating chart data for categories)
+    const uniqueCategories = new Set();
+    rows.forEach(stock => {
+        if (stock.category) { // Only count if category is defined
+            uniqueCategories.add(stock.category);
+        }
+    });
 
     // Data aggregation for Sector Chart
     const sectorData = rows.reduce((acc, stock) => {
@@ -114,7 +111,7 @@ export default function PortfolioCharts({ rows = [] }) {
         }))
         .sort((a, b) => b.value - a.value); // Sort by value descending
 
-    // Data aggregation for Holding Weight per Invested Amount Chart - NEW CHART DATA
+    // Data aggregation for Holding Weight per Invested Amount Chart
     const investedAmountChartData = rows
         .map(stock => ({
             name: stock.symbol || 'N/A', // Use symbol for each holding
@@ -125,15 +122,20 @@ export default function PortfolioCharts({ rows = [] }) {
         .sort((a, b) => b.value - a.value); // Sort by value descending
 
     // Check if there's any valid data with non-zero values for charts
-    const hasValidCategoryData = categoryChartData.some(entry => entry.value > 0);
+    // Removed hasValidCategoryData since the chart is gone
     const hasValidSectorData = sectorChartData.some(entry => entry.value > 0);
-    const hasValidInvestedAmountData = investedAmountChartData.some(entry => entry.value > 0); // NEW CHECK
+    const hasValidInvestedAmountData = investedAmountChartData.some(entry => entry.value > 0);
 
     const ChartCard = ({ title, data, hasData, dataKey = "value" }) => (
         <Card
             elevation={6}
             sx={{
-                height: 380,
+                height: 480,
+                flex: '1 1 300px',
+                minWidth: { xs: '100%', sm: '400px', md: '450px' },
+                maxWidth: 'calc(50% - ' + theme.spacing(1.5) + ')', // Allows two charts per row
+                m: 1.5,
+
                 background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
                 backdropFilter: 'blur(15px)',
                 border: '1px solid rgba(255,255,255,0.12)',
@@ -163,52 +165,72 @@ export default function PortfolioCharts({ rows = [] }) {
                 </Typography>
 
                 {hasData ? (
-                    <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-                                <Pie
-                                    data={data}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={35}
-                                    outerRadius={70}
-                                    paddingAngle={2}
-                                    dataKey={dataKey}
-                                    labelLine={false}
-                                    label={renderCustomizedLabel}
-                                >
-                                    {data.map((entry, index) => (
-                                        <Cell
-                                            key={`cell-${index}`}
-                                            fill={COLORS[index % COLORS.length]}
-                                            stroke="rgba(255,255,255,0.2)"
-                                            strokeWidth={1}
-                                        />
-                                    ))}
-                                </Pie>
-                                <Tooltip content={<CustomTooltip />} />
-                                <Legend
-                                    layout="vertical"
-                                    align="right"
-                                    verticalAlign="middle"
-                                    wrapperStyle={{
-                                        fontSize: '0.75rem',
-                                        paddingLeft: '10px',
-                                        maxWidth: '120px',
-                                        lineHeight: '1.3'
-                                    }}
-                                    formatter={(value) => (
-                                        <span style={{
-                                            fontSize: '0.75rem',
-                                            color: 'rgba(255,255,255,0.9)',
-                                            fontWeight: '500'
-                                        }}>
-                                            {value.length > 10 ? `${value.substring(0, 10)}...` : value}
-                                        </span>
-                                    )}
-                                />
-                            </PieChart>
-                        </ResponsiveContainer>
+                    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        {/* Container for PieChart and Legend */}
+                        <Box sx={{
+                            position: 'relative',
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                        }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart margin={{ top: 5, right: 5, bottom: 5, left: 100 }}>
+                                    <Pie
+                                        data={data}
+                                        cx="15%"
+                                        cy="50%"
+                                        innerRadius={75} // Increased inner radius for a thinner donut
+                                        outerRadius={100} // Increased outer radius to make chart larger
+                                        paddingAngle={2}
+                                        dataKey={dataKey}
+                                        labelLine={false}
+                                        label={renderCustomizedLabel}
+                                    >
+                                        {data.map((entry, index) => (
+                                            <Cell
+                                                key={`cell-${index}`}
+                                                fill={COLORS[index % COLORS.length]}
+                                                stroke="rgba(255,255,255,0.2)"
+                                                strokeWidth={1}
+                                            />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Legend
+                                        layout="vertical"
+                                        verticalAlign="middle"
+                                        align="left"
+                                        wrapperStyle={{
+                                            position: 'absolute',
+                                            left: 0,
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            width: 'auto',
+                                            fontSize: '0.85rem',
+                                            color: 'rgba(255, 255, 255, 0.9)',
+                                            fontWeight: '500',
+                                            paddingRight: theme.spacing(1),
+                                            maxHeight: '100%',
+                                            overflowY: 'auto'
+                                        }}
+                                        formatter={(value, entry) => (
+                                            <span style={{
+                                                color: 'rgba(255,255,255,0.9)',
+                                                fontWeight: '500',
+                                                overflowWrap: 'break-word',
+                                                wordBreak: 'break-word',
+                                                whiteSpace: 'normal',
+                                                lineHeight: '1.2'
+                                            }}> 
+                                                {value}
+                                            </span>
+                                        )}
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </Box>
                     </Box>
                 ) : (
                     <Box
@@ -282,12 +304,55 @@ export default function PortfolioCharts({ rows = [] }) {
                         style={{ marginRight: 8, animation: 'pulse 1s infinite' }}
                     /> Portfolio Status
                 </Typography>
+
+
+                    {/* Total Profit/Loss */}
+                    <Grid item xs={12} sm={6} md={4}> {/* Adjusted to md={4} for 3 items per row */}
+                        <Paper
+                            elevation={3}
+                            sx={{
+                                p: 2.5,
+                                textAlign: 'center',
+                                // Dynamically change background/border based on profit/loss
+                                background: totalProfitLoss >= 0
+                                    ? 'linear-gradient(135deg, rgba(0,196,159,0.15) 0%, rgba(0,196,159,0.08) 100%)'
+                                    : 'linear-gradient(135deg, rgba(255,99,132,0.15) 0%, rgba(255,99,132,0.08) 100%)',
+                                border: totalProfitLoss >= 0
+                                    ? '1px solid rgba(0,196,159,0.3)'
+                                    : '1px solid rgba(255,99,132,0.3)',
+                                borderRadius: 2,
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: totalProfitLoss >= 0
+                                        ? '0 8px 25px rgba(0,196,159,0.2)'
+                                        : '0 8px 25px rgba(255,99,132,0.2)'
+                                }
+                            }}
+                        >
+                            <Typography
+                                variant="h4"
+                                sx={{
+                                    color: totalProfitLoss >= 0 ? '#00C49F' : '#FF6384',
+                                    fontWeight: 700,
+                                    mb: 1
+                                }}
+                            >
+                                {totalProfitLoss >= 0 ? '+' : ''}
+                                ${totalProfitLoss.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>
+                                Profit/Loss
+                            </Typography>
+                        </Paper>
+                    </Grid>
             </Box>
 
-            {/* Summary Stats */}
+            {/* Summary Stats - Now with 6 items, arranged 3x2 on medium/large screens */}
             <Box sx={{ width: '100%', mb: 3 }}>
                 <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
+                    {/* Total Market Value */}
+                    <Grid item xs={12} sm={6} md={4}> {/* Adjusted to md={4} for 3 items per row */}
                         <Paper
                             elevation={3}
                             sx={{
@@ -304,15 +369,16 @@ export default function PortfolioCharts({ rows = [] }) {
                             }}
                         >
                             <Typography variant="h4" sx={{ color: '#00C49F', fontWeight: 700, mb: 1 }}>
-                                {categoryChartData.length}
+                                ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </Typography>
                             <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>
-                                Categories
+                                Market Value
                             </Typography>
                         </Paper>
                     </Grid>
 
-                    <Grid item xs={12} sm={4}>
+                    {/* Total Invested Amount */}
+                    <Grid item xs={12} sm={6} md={4}> {/* Adjusted to md={4} for 3 items per row */}
                         <Paper
                             elevation={3}
                             sx={{
@@ -329,6 +395,32 @@ export default function PortfolioCharts({ rows = [] }) {
                             }}
                         >
                             <Typography variant="h4" sx={{ color: '#0088FE', fontWeight: 700, mb: 1 }}>
+                                ${totalInvestedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>
+                                Invested Amount
+                            </Typography>
+                        </Paper>
+                    </Grid>
+
+                    {/* Number of Sectors */}
+                    <Grid item xs={12} sm={4} md={4}> {/* Adjusted to md={4} for 3 items per row */}
+                        <Paper
+                            elevation={3}
+                            sx={{
+                                p: 2.5,
+                                textAlign: 'center',
+                                background: 'linear-gradient(135deg, rgba(255,99,132,0.15) 0%, rgba(255,99,132,0.08) 100%)',
+                                border: '1px solid rgba(255,99,132,0.3)',
+                                borderRadius: 2,
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 8px 25px rgba(255,99,132,0.2)'
+                                }
+                            }}
+                        >
+                            <Typography variant="h4" sx={{ color: '#FF6384', fontWeight: 700, mb: 1 }}>
                                 {sectorChartData.length}
                             </Typography>
                             <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>
@@ -337,23 +429,24 @@ export default function PortfolioCharts({ rows = [] }) {
                         </Paper>
                     </Grid>
 
-                    <Grid item xs={12} sm={4}>
+                    {/* Number of Holdings */}
+                    <Grid item xs={12} sm={4} md={4}> {/* Adjusted to md={4} for 3 items per row */}
                         <Paper
                             elevation={3}
                             sx={{
                                 p: 2.5,
                                 textAlign: 'center',
-                                background: 'linear-gradient(135deg, rgba(255,187,40,0.15) 0%, rgba(255,187,40,0.08) 100%)',
-                                border: '1px solid rgba(255,187,40,0.3)',
+                                background: 'linear-gradient(135deg, rgba(162,141,255,0.15) 0%, rgba(162,141,255,0.08) 100%)',
+                                border: '1px solid rgba(162,141,255,0.3)',
                                 borderRadius: 2,
                                 transition: 'all 0.3s ease',
                                 '&:hover': {
                                     transform: 'translateY(-2px)',
-                                    boxShadow: '0 8px 25px rgba(255,187,40,0.2)'
+                                    boxShadow: '0 8px 25px rgba(162,141,255,0.2)'
                                 }
                             }}
                         >
-                            <Typography variant="h4" sx={{ color: '#FFBB28', fontWeight: 700, mb: 1 }}>
+                            <Typography variant="h4" sx={{ color: '#A28DFF', fontWeight: 700, mb: 1 }}>
                                 {rows.length}
                             </Typography>
                             <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>
@@ -364,31 +457,27 @@ export default function PortfolioCharts({ rows = [] }) {
                 </Grid>
             </Box>
 
-            {/* Charts Grid - Now in responsive layout */}
-            <Box sx={{ width: '100%' }}>
-                <Grid container spacing={2}>
-                    <Grid item xs={12} lg={4}>
-                        <ChartCard
-                            title="Category Allocation"
-                            data={categoryChartData}
-                            hasData={hasValidCategoryData}
-                        />
-                    </Grid>
-                    <Grid item xs={12} lg={4}>
-                        <ChartCard
-                            title="Sector Allocation"
-                            data={sectorChartData}
-                            hasData={hasValidSectorData}
-                        />
-                    </Grid>
-                    <Grid item xs={12} lg={4}>
-                        <ChartCard
-                            title="Holding Weight (Invested)"
-                            data={investedAmountChartData}
-                            hasData={hasValidInvestedAmountData}
-                        />  
-                    </Grid>
-                </Grid>
+            {/* Charts Rendered as Separate Objects/Papers */}
+            <Box
+                sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    justifyContent: 'center',
+                    alignItems: 'flex-start',
+                    gap: theme.spacing(3),
+                    py: 2
+                }}
+            >
+                <ChartCard
+                    title="Sector Allocation"
+                    data={sectorChartData}
+                    hasData={hasValidSectorData}
+                />
+                <ChartCard
+                    title="Holding Weight (Invested)"
+                    data={investedAmountChartData}
+                    hasData={hasValidInvestedAmountData}
+                />
             </Box>
         </Box>
     );

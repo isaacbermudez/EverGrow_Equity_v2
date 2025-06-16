@@ -216,27 +216,7 @@ export default function PortfolioAssets({ rows = [] }) {
 
   return (
     // The main Box of PortfolioAssets, applying the gradient background
-    <Box p={3} sx={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)' }}>
-        <Box mb={4}> {/* mb for margin-bottom to separate it from the next section */}
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={4}>
-            <SummaryCard
-              icon={DollarSign}
-              title="Total Value"
-              value={`$${totalValue.toFixed(2)}`}
-              change={totalPLPct}
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <SummaryCard
-              icon={TrendingUp}
-              title="Total P/L"
-              value={`${totalPL >= 0 ? '+' : ''}$${totalPL.toFixed(2)}`}
-              change={totalPLPct}
-            />
-          </Grid>
-        </Grid>
-      </Box>
+    <Box p={3} sx={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)' }}>     
 
       <Box>
         {/* Pagination Controls - conditionally rendered */}

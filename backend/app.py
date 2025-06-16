@@ -228,6 +228,29 @@ def get_company_news():
         print(f"An unexpected error occurred in get_company_news for {symbol}: {e}")
         return jsonify({"error": f"An unexpected server error occurred for {symbol}: {e}"}), 500
 
+def get_company_news_from_backend(symbol, from_date=None, to_date=None):
+    try:
+        today = datetime.now().strftime('%Y-%m-%d')
+        from_date = from_date or (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        to_date = to_date or today
+
+        url = f"https://finnhub.io/api/v1/company-news?symbol={symbol}&from={from_date}&to={to_date}&token={FINNHUB_API_KEY}"
+        resp = requests.get(url)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+def get_fundamentals_from_backend(symbol):
+    try:
+        url = f"https://finnhub.io/api/v1/stock/metric?symbol={symbol}&metric=all&token={FINNHUB_API_KEY}"
+        resp = requests.get(url)
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.route("/api/chat", methods=["POST"])
 def chat_with_gpt():
     try:
@@ -238,64 +261,121 @@ def chat_with_gpt():
         if not user_message:
             return jsonify({"error": "Message is required."}), 400
 
-        # Prepare the conversation payload for OpenRouter
         messages_payload = [
             {"role": "system", "content": DEEPDIVE_SYSTEM_PROMPT.strip()},
             *conversation_history,
             {"role": "user", "content": user_message.strip()}
         ]
 
-        openrouter_url = "https://openrouter.ai/api/v1/chat/completions"
+        tool_definitions = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_stock_quote",
+                    "description": "Obtiene el precio de cotización actual de la acción desde Finnhub.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": { "type": "string", "description": "Símbolo bursátil, por ejemplo: NVO" }
+                        },
+                        "required": ["symbol"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_company_news",
+                    "description": "Obtiene noticias recientes de una empresa con su símbolo.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": { "type": "string" },
+                            "from_date": { "type": "string" },
+                            "to_date": { "type": "string" }
+                        },
+                        "required": ["symbol"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_fundamentals",
+                    "description": "Obtiene métricas fundamentales de una empresa.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": { "type": "string" }
+                        },
+                        "required": ["symbol"]
+                    }
+                }
+            }
+        ]
+
         headers = {
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
             "Content-Type": "application/json"
         }
+
         payload = {
             "model": "deepseek/deepseek-chat-v3-0324",
             "messages": messages_payload,
-            "temperature": 0.7,
-            # "stream": True # Add this if you want to implement streaming, but it requires frontend changes too
+            "tools": tool_definitions,
+            "tool_choice": "auto"
         }
 
-        print(f"Sending to OpenRouter with model deepseek/deepseek-chat-v3-0324: {messages_payload}")
+        openrouter_url = "https://openrouter.ai/api/v1/chat/completions"
+        resp = requests.post(openrouter_url, headers=headers, json=payload)
+        resp.raise_for_status()
+        data = resp.json()
 
-        # --- NEW: Use requests directly ---
-        openrouter_resp = requests.post(openrouter_url, headers=headers, json=payload)
-        openrouter_resp.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
+        if "choices" not in data or not data["choices"]:
+            return jsonify({"error": f"Unexpected response from OpenRouter: {json.dumps(data, indent=2)}"}), 500
 
-        gpt_data = openrouter_resp.json()
-        gpt_response = gpt_data["choices"][0]["message"]["content"]
-        
-        # --- NEW: Extract Rate Limit Headers from direct requests response ---
-        rate_limit_limit_tokens = openrouter_resp.headers.get("X-Ratelimit-Limit")
-        rate_limit_remaining_tokens = openrouter_resp.headers.get("X-Ratelimit-Remaining")
-        rate_limit_reset_tokens = openrouter_resp.headers.get("X-Ratelimit-Reset")
+        message = data["choices"][0]["message"]
 
-        print(f"Received from OpenRouter: {gpt_response}")
-        print(f"OpenRouter Rate Limit: {rate_limit_remaining_tokens}/{rate_limit_limit_tokens} tokens, resets in {rate_limit_reset_tokens}s")
-        # --- END NEW ---
+        # TOOL CALL HANDLING
+        if "tool_calls" in message:
+            tool_outputs = []
+            for tool_call in message["tool_calls"]:
+                fn_name = tool_call["function"]["name"]
+                args = json.loads(tool_call["function"]["arguments"])
 
-        return jsonify({
-            "response": gpt_response,
-            "rateLimits": {
-                "limitTokens": rate_limit_limit_tokens,
-                "remainingTokens": rate_limit_remaining_tokens,
-                "resetTokens": rate_limit_reset_tokens
+                if fn_name == "get_stock_quote":
+                    result = get_quote(args["symbol"])
+                elif fn_name == "get_company_news":
+                    result = get_company_news_from_backend(args["symbol"], args.get("from_date"), args.get("to_date"))
+                elif fn_name == "get_fundamentals":
+                    result = get_fundamentals_from_backend(args["symbol"])
+                else:
+                    result = {"error": f"Unknown tool: {fn_name}"}
+
+                tool_outputs.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call["id"],
+                    "name": fn_name,
+                    "content": json.dumps(result)
+                })
+
+            followup_payload = {
+                "model": "deepseek/deepseek-chat-v3-0324",
+                "messages": messages_payload + [message] + tool_outputs
             }
-        })
 
-    except requests.exceptions.HTTPError as e:
-        print(f"HTTP Error from OpenRouter: {e.response.status_code} - {e.response.text}")
-        return jsonify({"error": f"OpenRouter API Error: {e.response.status_code} - {e.response.text}"}), e.response.status_code
-    except requests.exceptions.RequestException as e:
-        print(f"Request Exception to OpenRouter: {e}")
-        return jsonify({"error": f"Failed to connect to OpenRouter API: {e}"}), 500
-    except json.JSONDecodeError as e:
-        print(f"JSON Decode Error from OpenRouter: {e}. Raw response: '{openrouter_resp.text}'")
-        return jsonify({"error": f"Failed to parse OpenRouter response as JSON. Error: {e}"}), 500
+            followup_resp = requests.post(openrouter_url, headers=headers, json=followup_payload)
+            followup_resp.raise_for_status()
+            final_message = followup_resp.json()["choices"][0]["message"]["content"]
+
+            return jsonify({"response": final_message})
+
+        return jsonify({"response": message["content"]})
+
     except Exception as e:
-        print(f"An unexpected error occurred in chat_with_gpt: {e}")
-        return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
+        print(f"Error in chat_with_gpt: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     if not OPENROUTER_API_KEY:

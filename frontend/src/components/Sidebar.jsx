@@ -11,8 +11,9 @@ import {
   Typography,
   Divider,
   Box,
-  Chip, // Added Chip
-  IconButton, // Added IconButton
+  Chip,
+  IconButton,
+  CircularProgress, // Import CircularProgress for loading indicator
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
@@ -29,7 +30,14 @@ import { NavLink } from 'react-router-dom';
 import { teal } from '@mui/material/colors';
 
 // drawerWidth now comes from props, defaulting to 240 if not provided
-export default function Sidebar({ drawerWidth = 240, isDataLoaded, onUploadAssets, onClearData, onRefreshData }) {
+export default function Sidebar({
+    drawerWidth = 100,
+    isDataLoaded,
+    onUploadAssets,
+    onClearData,
+    onRefreshData,
+    isLoading // <--- NEW PROP: to indicate loading state for refresh
+}) {
   const navItems = [
     { text: 'Home', icon: <DashboardIcon sx={{ color: 'white' }} />, path: '/' },
     { text: 'News', icon: <NewspaperIcon sx={{ color: 'white' }} />, path: '/news' },
@@ -94,7 +102,7 @@ export default function Sidebar({ drawerWidth = 240, isDataLoaded, onUploadAsset
                   },
                 },
                 '&:hover': {
-                  bgcolor: teal[700],
+                  bgcolor: teal[700], // <-- Corrected: added closing square bracket here
                 },
               }}
             >
@@ -133,9 +141,33 @@ export default function Sidebar({ drawerWidth = 240, isDataLoaded, onUploadAsset
 
         {isDataLoaded && (
           <Box sx={{ display: 'flex', justifyContent: 'space-around', width: '100%', mt: 0.5 }}>
-            <IconButton onClick={onRefreshData} sx={{ color: 'white', '&:hover': { bgcolor: teal[700] } }}>
-              <RefreshIcon />
-              <Typography variant="caption" sx={{ ml: 0.5, color: 'white' }}>Refresh</Typography>
+            <IconButton
+                onClick={onRefreshData}
+                disabled={isLoading} // Disable button when loading
+                sx={{
+                    color: 'white',
+                    '&:hover': { bgcolor: teal[700] },
+                    position: 'relative', // Needed for CircularProgress positioning
+                }}
+            >
+                {isLoading ? (
+                    <CircularProgress
+                        size={24} // Size of the spinner
+                        sx={{
+                            color: 'white',
+                            position: 'absolute', // Position over the icon
+                            top: '50%',
+                            left: '50%',
+                            marginTop: '-12px', // Half of size to center vertically
+                            marginLeft: '-12px', // Half of size to center horizontally
+                        }}
+                    />
+                ) : (
+                    <RefreshIcon />
+                )}
+                <Typography variant="caption" sx={{ ml: isLoading ? 2 : 0.5, color: 'white' }}>
+                    Refresh
+                </Typography>
             </IconButton>
             <IconButton onClick={onClearData} sx={{ color: 'white', '&:hover': { bgcolor: teal[700] } }}>
               <ClearIcon />

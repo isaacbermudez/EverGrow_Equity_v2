@@ -132,6 +132,7 @@ export default function App() {
   });
 
   const [isDataLoaded, setIsDataLoaded] = useState(portfolioData.length > 0);
+  const [isLoading, setIsLoading] = useState(false); // <--- NEW STATE: For refresh loading indicator
 
   useEffect(() => {
     localStorage.setItem('portfolioAnalysisData', JSON.stringify(portfolioData));
@@ -141,6 +142,7 @@ export default function App() {
 
 
   const handleAssets = async (assets) => {
+    setIsLoading(true); // Set loading to true when starting to handle assets
     setUploadedAssets(assets);
 
     try {
@@ -159,7 +161,9 @@ export default function App() {
       alert(e.message); // In a real app, you'd show a more user-friendly error message
       setPortfolioData([]);
       setUploadedAssets([]);
-      throw e;
+      // Do not re-throw if you want to handle the error gracefully here
+    } finally {
+      setIsLoading(false); // Set loading to false once operation is complete (success or failure)
     }
   };
 
@@ -173,6 +177,7 @@ export default function App() {
 
   const handleRefreshData = async () => {
     if (uploadedAssets.length > 0) {
+      // Re-use handleAssets for refreshing as it contains the API call logic
       await handleAssets(uploadedAssets);
     } else {
       alert("No previously uploaded data to refresh.");
@@ -190,11 +195,12 @@ export default function App() {
           <Sidebar
             drawerWidth={drawerWidth} // Pass drawerWidth for consistency
             isDataLoaded={isDataLoaded}
-            onUploadAssets={handleAssets} // Renamed for clarity as a prop
-            onClearData={handleClearData} // Renamed for clarity as a prop
-            onRefreshData={handleRefreshData} // Renamed for clarity as a prop
-            // uploadedAssets is not directly used by Sidebar's UI, only handleAssets needs it internally
-            FileUploadComponent={FileUpload} // Pass the FileUpload component itself
+            onUploadAssets={handleAssets}
+            onClearData={handleClearData}
+            onRefreshData={handleRefreshData}
+            isLoading={isLoading} // <--- Pass the new isLoading state here
+            // FileUploadComponent is not needed anymore since FileUpload is directly imported in Sidebar
+            // and the logic moved to App.jsx for data handling.
           />
 
           <Box
@@ -202,16 +208,9 @@ export default function App() {
             sx={{
               flexGrow: 1,
               p: 3,
-              ml: `${drawerWidth}px`, // Maintains space for the sidebar
-              width: `calc(100% - ${drawerWidth}px)`,
-              // mt: '64px', // Removed as there's no fixed AppBar at the top pushing content down
               display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
             }}
           >
-            {/* <Toolbar /> Removed this placeholder Toolbar as the App Bar is gone */}
-
             <Routes>
               <Route
                 path="/"
@@ -232,7 +231,7 @@ export default function App() {
             </Routes>
           </Box>
         </Box>
-        <ChatWidget /> {/* <--- NEW: Add the ChatWidget here */}
+        <ChatWidget />
       </BrowserRouter>
     </ThemeProvider>
   );

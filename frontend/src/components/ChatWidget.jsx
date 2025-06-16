@@ -126,7 +126,7 @@ const ChatWidget = () => {
             position: 'fixed',
             bottom: 100,
             right: 24,
-            width: { xs: '90%', sm: 350 },
+            width: { xs: '90%', sm: 500 },
             height: 600,
             display: 'flex',
             flexDirection: 'column',
@@ -156,46 +156,46 @@ const ChatWidget = () => {
           </Box>
 
           {(tokenLimit !== null || tokensRemaining !== null) && (
-              <Box sx={{
-                  p: 1,
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 0.5,
-                  bgcolor: 'action.hover',
-                  borderBottom: '1px solid',
-                  borderColor: 'divider',
-              }}>
-                  {tokensRemaining !== null && (
-                      <Chip
-                          label={`Tokens: ${tokensRemaining}`}
-                          size="small"
-                          color={
-                            tokensRemaining < 200 ? "error" :
-                            tokensRemaining < (tokenLimit * 0.2) ? "warning" :
-                            "info"
-                          }
-                          variant="outlined"
-                      />
-                  )}
-                  {tokenLimit !== null && (
-                      <Chip
-                          label={`Límite: ${tokenLimit}`}
-                          size="small"
-                          color="default"
-                          variant="outlined"
-                      />
-                  )}
-                  {tokenReset !== null && (
-                      <Chip
-                          label={`Restablece en: ${tokenReset}s`}
-                          size="small"
-                          color="default"
-                          variant="outlined"
-                      />
-                  )}
-              </Box>
+            <Box sx={{
+              p: 1,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 0.5,
+              bgcolor: 'action.hover',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+            }}>
+              {tokensRemaining !== null && (
+                <Chip
+                  label={`Tokens: ${tokensRemaining}`}
+                  size="small"
+                  color={
+                    tokensRemaining < 200 ? "error" :
+                      tokensRemaining < (tokenLimit * 0.2) ? "warning" :
+                        "info"
+                  }
+                  variant="outlined"
+                />
+              )}
+              {tokenLimit !== null && (
+                <Chip
+                  label={`Límite: ${tokenLimit}`}
+                  size="small"
+                  color="default"
+                  variant="outlined"
+                />
+              )}
+              {tokenReset !== null && (
+                <Chip
+                  label={`Restablece en: ${tokenReset}s`}
+                  size="small"
+                  color="default"
+                  variant="outlined"
+                />
+              )}
+            </Box>
           )}
 
           <Box
@@ -227,8 +227,8 @@ const ChatWidget = () => {
                     borderRadius: 2,
                     maxWidth: '80%',
                     wordBreak: 'break-word',
-                    bgcolor: msg.role === 'user' ? 'primary.light' : 'secondary.light',
-                    color: msg.role === 'user' ? 'white' : 'text.primary',
+                    bgcolor: 'primary.light',
+                    color: 'white',
                   }}
                 >
                   {/* --- NEW: Use ReactMarkdown to render content --- */}
@@ -236,17 +236,17 @@ const ChatWidget = () => {
                     remarkPlugins={[remarkGfm]}
                     rehypePlugins={[rehypeRaw]}
                     components={{
-                        // Optional: Customize rendering for specific HTML/Markdown elements
-                        // For example, to apply Material-UI typography to paragraphs:
-                        p: ({node, ...props}) => <Typography variant="body2" component="p" {...props} />,
-                        table: ({node, ...props}) => (
-                            <Box sx={{ overflowX: 'auto', my: 1 }}> {/* Add scroll for wide tables */}
-                                <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ddd' }} {...props} />
-                            </Box>
-                        ),
-                        th: ({node, ...props}) => <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f2f2f2', textAlign: 'left' }} {...props} />,
-                        td: ({node, ...props}) => <td style={{ border: '1px solid #ddd', padding: '8px' }} {...props} />,
-                        a: ({node, ...props}) => <a style={{ color: 'blue', textDecoration: 'underline' }} target="_blank" rel="noopener noreferrer" {...props} />,
+                      // Optional: Customize rendering for specific HTML/Markdown elements
+                      // For example, to apply Material-UI typography to paragraphs:
+                      p: ({ node, ...props }) => <Typography variant="body2" component="p" {...props} />,
+                      table: ({ node, ...props }) => (
+                        <Box sx={{ overflowX: 'auto', my: 1 }}> {/* Add scroll for wide tables */}
+                          <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ddd' }} {...props} />
+                        </Box>
+                      ),
+                      th: ({ node, ...props }) => <th style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: 'primary.light', textAlign: 'left' }} {...props} />,
+                      td: ({ node, ...props }) => <td style={{ border: '1px solid #ddd', padding: '8px' }} {...props} />,
+                      a: ({ node, ...props }) => <a style={{ color: 'blue', textDecoration: 'underline' }} target="_blank" rel="noopener noreferrer" {...props} />,
                     }}
                   >
                     {msg.content}
@@ -256,12 +256,12 @@ const ChatWidget = () => {
               </Box>
             ))}
             {isLoading && (
-                <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 1 }}>
-                    <Paper variant="outlined" sx={{ p: 1.2, borderRadius: 2, bgcolor: 'action.hover' }}>
-                        <CircularProgress size={20} sx={{ mr: 1 }} />
-                        <Typography variant="body2" component="span">Thinking...</Typography>
-                    </Paper>
-                </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 1 }}>
+                <Paper variant="outlined" sx={{ p: 1.2, borderRadius: 2, bgcolor: 'action.hover' }}>
+                  <CircularProgress size={20} sx={{ mr: 1 }} />
+                  <Typography variant="body2" component="span">Thinking...</Typography>
+                </Paper>
+              </Box>
             )}
             <div ref={messagesEndRef} />
           </Box>
