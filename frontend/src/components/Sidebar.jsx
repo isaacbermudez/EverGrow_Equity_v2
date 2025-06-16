@@ -141,7 +141,7 @@ export default function Sidebar({
 
         {isDataLoaded && (
           <Box sx={{ display: 'flex', justifyContent: 'space-around', width: '100%', mt: 0.5 }}>
-            <IconButton
+           <IconButton
                 onClick={onRefreshData}
                 disabled={isLoading} // Disable button when loading
                 sx={{
@@ -150,7 +150,7 @@ export default function Sidebar({
                     position: 'relative', // Needed for CircularProgress positioning
                 }}
             >
-                {isLoading ? (
+                {isLoading ? ( // If loading, show spinner
                     <CircularProgress
                         size={24} // Size of the spinner
                         sx={{
@@ -162,12 +162,15 @@ export default function Sidebar({
                             marginLeft: '-12px', // Half of size to center horizontally
                         }}
                     />
-                ) : (
+                ) : ( // If not loading, show refresh icon
                     <RefreshIcon />
                 )}
-                <Typography variant="caption" sx={{ ml: isLoading ? 2 : 0.5, color: 'white' }}>
-                    Refresh
-                </Typography>
+                {/* Conditionally render the "Refresh" text */}
+                {!isLoading && ( // Show text ONLY if not loading
+                    <Typography variant="caption" sx={{ ml: 0.5, color: 'white' }}>
+                        Refresh
+                    </Typography>
+                )}
             </IconButton>
             <IconButton onClick={onClearData} sx={{ color: 'white', '&:hover': { bgcolor: teal[700] } }}>
               <ClearIcon />

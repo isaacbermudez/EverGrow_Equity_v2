@@ -3,6 +3,7 @@ import React from 'react';
 import { Box, Typography, Paper, useTheme, Grid, Card, CardContent } from '@mui/material';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Zap } from 'lucide-react';
+import { teal } from '@mui/material/colors'; // Import teal color for consistency
 
 // Helper: if not a number, fall back to 0
 const safeNum = (n) => (typeof n === 'number' ? n : 0);
@@ -22,7 +23,7 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
     const percentage = (percent * 100).toFixed(0);
 
     // Only display label if percentage is greater than a threshold (e.g., 3%) to avoid clutter
-    if (percent * 100 > 3) { // Adjust this threshold as needed
+    if (percent * 100 > 3) {
         return (
             <text
                 x={x}
@@ -84,10 +85,13 @@ export default function PortfolioCharts({ rows = [] }) {
     // Calculate total profit/loss (Market Value - Invested Amount)
     const totalProfitLoss = totalValue - totalInvestedAmount;
 
-    // Count unique categories for summary stat (no longer generating chart data for categories)
+    // Calculate profit/loss percentage
+    const profitLossPercentage = totalInvestedAmount > 0 ? ((totalProfitLoss / totalInvestedAmount) * 100) : 0;
+
+    // Count unique categories for summary stat
     const uniqueCategories = new Set();
     rows.forEach(stock => {
-        if (stock.category) { // Only count if category is defined
+        if (stock.category) {
             uniqueCategories.add(stock.category);
         }
     });
@@ -109,20 +113,19 @@ export default function PortfolioCharts({ rows = [] }) {
             value: sectorData[name],
             total: totalValue
         }))
-        .sort((a, b) => b.value - a.value); // Sort by value descending
+        .sort((a, b) => b.value - a.value);
 
     // Data aggregation for Holding Weight per Invested Amount Chart
     const investedAmountChartData = rows
         .map(stock => ({
-            name: stock.symbol || 'N/A', // Use symbol for each holding
-            value: safeNum(stock.CI),    // Use invested amount (CI)
-            total: totalInvestedAmount   // Use total invested amount for percentage
+            name: stock.symbol || 'N/A',
+            value: safeNum(stock.CI),
+            total: totalInvestedAmount
         }))
-        .filter(entry => entry.value > 0) // Only include holdings with non-zero invested amount
-        .sort((a, b) => b.value - a.value); // Sort by value descending
+        .filter(entry => entry.value > 0)
+        .sort((a, b) => b.value - a.value);
 
     // Check if there's any valid data with non-zero values for charts
-    // Removed hasValidCategoryData since the chart is gone
     const hasValidSectorData = sectorChartData.some(entry => entry.value > 0);
     const hasValidInvestedAmountData = investedAmountChartData.some(entry => entry.value > 0);
 
@@ -133,9 +136,8 @@ export default function PortfolioCharts({ rows = [] }) {
                 height: 480,
                 flex: '1 1 300px',
                 minWidth: { xs: '100%', sm: '400px', md: '450px' },
-                maxWidth: 'calc(50% - ' + theme.spacing(1.5) + ')', // Allows two charts per row
+                maxWidth: 'calc(50% - ' + theme.spacing(1.5) + ')',
                 m: 1.5,
-
                 background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
                 backdropFilter: 'blur(15px)',
                 border: '1px solid rgba(255,255,255,0.12)',
@@ -166,7 +168,6 @@ export default function PortfolioCharts({ rows = [] }) {
 
                 {hasData ? (
                     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        {/* Container for PieChart and Legend */}
                         <Box sx={{
                             position: 'relative',
                             width: '100%',
@@ -181,8 +182,8 @@ export default function PortfolioCharts({ rows = [] }) {
                                         data={data}
                                         cx="15%"
                                         cy="50%"
-                                        innerRadius={75} // Increased inner radius for a thinner donut
-                                        outerRadius={100} // Increased outer radius to make chart larger
+                                        innerRadius={75}
+                                        outerRadius={100}
                                         paddingAngle={2}
                                         dataKey={dataKey}
                                         labelLine={false}
@@ -223,7 +224,7 @@ export default function PortfolioCharts({ rows = [] }) {
                                                 wordBreak: 'break-word',
                                                 whiteSpace: 'normal',
                                                 lineHeight: '1.2'
-                                            }}> 
+                                            }}>
                                                 {value}
                                             </span>
                                         )}
@@ -304,55 +305,13 @@ export default function PortfolioCharts({ rows = [] }) {
                         style={{ marginRight: 8, animation: 'pulse 1s infinite' }}
                     /> Portfolio Status
                 </Typography>
-
-
-                    {/* Total Profit/Loss */}
-                    <Grid item xs={12} sm={6} md={4}> {/* Adjusted to md={4} for 3 items per row */}
-                        <Paper
-                            elevation={3}
-                            sx={{
-                                p: 2.5,
-                                textAlign: 'center',
-                                // Dynamically change background/border based on profit/loss
-                                background: totalProfitLoss >= 0
-                                    ? 'linear-gradient(135deg, rgba(0,196,159,0.15) 0%, rgba(0,196,159,0.08) 100%)'
-                                    : 'linear-gradient(135deg, rgba(255,99,132,0.15) 0%, rgba(255,99,132,0.08) 100%)',
-                                border: totalProfitLoss >= 0
-                                    ? '1px solid rgba(0,196,159,0.3)'
-                                    : '1px solid rgba(255,99,132,0.3)',
-                                borderRadius: 2,
-                                transition: 'all 0.3s ease',
-                                '&:hover': {
-                                    transform: 'translateY(-2px)',
-                                    boxShadow: totalProfitLoss >= 0
-                                        ? '0 8px 25px rgba(0,196,159,0.2)'
-                                        : '0 8px 25px rgba(255,99,132,0.2)'
-                                }
-                            }}
-                        >
-                            <Typography
-                                variant="h4"
-                                sx={{
-                                    color: totalProfitLoss >= 0 ? '#00C49F' : '#FF6384',
-                                    fontWeight: 700,
-                                    mb: 1
-                                }}
-                            >
-                                {totalProfitLoss >= 0 ? '+' : ''}
-                                ${totalProfitLoss.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </Typography>
-                            <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>
-                                Profit/Loss
-                            </Typography>
-                        </Paper>
-                    </Grid>
             </Box>
 
-            {/* Summary Stats - Now with 6 items, arranged 3x2 on medium/large screens */}
+            {/* Summary Stats - Fixed Grid Layout */}
             <Box sx={{ width: '100%', mb: 3 }}>
                 <Grid container spacing={2}>
                     {/* Total Market Value */}
-                    <Grid item xs={12} sm={6} md={4}> {/* Adjusted to md={4} for 3 items per row */}
+                    <Grid item xs={12} sm={6} md={4}>
                         <Paper
                             elevation={3}
                             sx={{
@@ -378,7 +337,7 @@ export default function PortfolioCharts({ rows = [] }) {
                     </Grid>
 
                     {/* Total Invested Amount */}
-                    <Grid item xs={12} sm={6} md={4}> {/* Adjusted to md={4} for 3 items per row */}
+                    <Grid item xs={12} sm={6} md={4}>
                         <Paper
                             elevation={3}
                             sx={{
@@ -403,8 +362,58 @@ export default function PortfolioCharts({ rows = [] }) {
                         </Paper>
                     </Grid>
 
+                    {/* Total Profit/Loss - Fixed positioning */}
+                    <Grid item xs={12} sm={6} md={4}>
+                        <Paper
+                            elevation={3}
+                            sx={{
+                                p: 2.5,
+                                textAlign: 'center',
+                                background: totalProfitLoss >= 0
+                                    ? 'linear-gradient(135deg, rgba(0,196,159,0.15) 0%, rgba(0,196,159,0.08) 100%)'
+                                    : 'linear-gradient(135deg, rgba(255,99,132,0.15) 0%, rgba(255,99,132,0.08) 100%)',
+                                border: totalProfitLoss >= 0
+                                    ? '1px solid rgba(0,196,159,0.3)'
+                                    : '1px solid rgba(255,99,132,0.3)',
+                                borderRadius: 2,
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: totalProfitLoss >= 0
+                                        ? '0 8px 25px rgba(0,196,159,0.2)'
+                                        : '0 8px 25px rgba(255,99,132,0.2)'
+                                }
+                            }}
+                        >
+                            <Typography
+                                variant="h4"
+                                sx={{
+                                    color: totalProfitLoss >= 0 ? '#00C49F' : '#FF6384',
+                                    fontWeight: 700,
+                                    mb: 0.5
+                                }}
+                            >
+                                {totalProfitLoss >= 0 ? '+' : ''}
+                                ${totalProfitLoss.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </Typography>
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    color: totalProfitLoss >= 0 ? '#00C49F' : '#FF6384',
+                                    fontWeight: 600,
+                                    mb: 0.5
+                                }}
+                            >
+                                ({profitLossPercentage >= 0 ? '+' : ''}{profitLossPercentage.toFixed(1)}%)
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>
+                                Profit/Loss
+                            </Typography>
+                        </Paper>
+                    </Grid>
+
                     {/* Number of Sectors */}
-                    <Grid item xs={12} sm={4} md={4}> {/* Adjusted to md={4} for 3 items per row */}
+                    <Grid item xs={12} sm={4} md={4}>
                         <Paper
                             elevation={3}
                             sx={{
@@ -430,7 +439,7 @@ export default function PortfolioCharts({ rows = [] }) {
                     </Grid>
 
                     {/* Number of Holdings */}
-                    <Grid item xs={12} sm={4} md={4}> {/* Adjusted to md={4} for 3 items per row */}
+                    <Grid item xs={12} sm={4} md={4}>
                         <Paper
                             elevation={3}
                             sx={{
@@ -454,10 +463,36 @@ export default function PortfolioCharts({ rows = [] }) {
                             </Typography>
                         </Paper>
                     </Grid>
+
+                    {/* Number of Categories */}
+                    <Grid item xs={12} sm={4} md={4}>
+                        <Paper
+                            elevation={3}
+                            sx={{
+                                p: 2.5,
+                                textAlign: 'center',
+                                background: 'linear-gradient(135deg, rgba(255,187,40,0.15) 0%, rgba(255,187,40,0.08) 100%)',
+                                border: '1px solid rgba(255,187,40,0.3)',
+                                borderRadius: 2,
+                                transition: 'all 0.3s ease',
+                                '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 8px 25px rgba(255,187,40,0.2)'
+                                }
+                            }}
+                        >
+                            <Typography variant="h4" sx={{ color: '#FFBB28', fontWeight: 700, mb: 1 }}>
+                                {uniqueCategories.size}
+                            </Typography>
+                            <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>
+                                Categories
+                            </Typography>
+                        </Paper>
+                    </Grid>
                 </Grid>
             </Box>
 
-            {/* Charts Rendered as Separate Objects/Papers */}
+            {/* Charts Section */}
             <Box
                 sx={{
                     display: 'flex',
