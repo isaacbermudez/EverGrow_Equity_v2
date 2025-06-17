@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Box, Alert, Paper, Typography, CircularProgress, Chip } from '@mui/material';
+import { Button, Box, Alert, Paper, Typography, CircularProgress, Chip, useTheme } from '@mui/material'; // Imported useTheme
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { teal } from '@mui/material/colors';
@@ -8,6 +8,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
   const [error, setError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [internalIsLoading, setInternalIsLoading] = useState(false);
+  const theme = useTheme(); // Initialize useTheme hook
 
   const isLoading = propIsLoading || internalIsLoading;
 
@@ -15,7 +16,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
     if (!file) return;
 
     setInternalIsLoading(true);
-    setError(null);
+    setError(null); // Clear previous errors
 
     if (!file.name.endsWith('.json')) {
       setError("Please upload a JSON file.");
@@ -25,27 +26,42 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
 
     try {
       const text = await file.text();
-      const parsedData = JSON.parse(text); // Parse the JSON content
-
-      // --- IMPORTANT CHANGE HERE ---
-      // Instead of checking for Array, check if it's an object and contains expected keys
-      if (typeof parsedData !== 'object' || parsedData === null) {
-          throw new Error("Invalid JSON format. Expected a top-level object.");
+      let parsedData;
+      try {
+        parsedData = JSON.parse(text); // Attempt to parse the JSON content
+      } catch (jsonParseError) {
+        // Catch JSON parsing errors specifically with a custom message
+        throw new Error(`Invalid JSON file content.`);
       }
+
+      // Check if the parsed data is a top-level object
+      if (typeof parsedData !== 'object' || parsedData === null || Array.isArray(parsedData)) {
+          throw new Error("Invalid JSON format.");
+      }
+      
+      // Optional: Check for presence of 'Assets' key, but don't error out if not strictly mandatory
       if (!parsedData.Assets) {
-          // You can refine this check based on whether 'Assets' is strictly mandatory
-          // or if other top-level keys like 'Transactions'/'Deposits' are always expected.
           console.warn("Uploaded JSON does not contain an 'Assets' key at the top level. Proceeding with potentially empty assets.");
       }
-      // --- END IMPORTANT CHANGE ---
+      // You can add similar warnings for 'Transactions' or 'Deposits' if their absence is notable but not fatal
+      if (!parsedData.Transactions) {
+        console.warn("Uploaded JSON does not contain a 'Transactions' key. Proceeding with potentially empty transactions.");
+      }
+      if (!parsedData.Deposits) {
+        console.warn("Uploaded JSON does not contain a 'Deposits' key. Proceeding with potentially empty deposits.");
+      }
+
 
       await onUpload(parsedData); // Pass the ENTIRE parsed object to onUpload
-      setError(null);
+      // If upload is successful, error is already null from the start of processFile
     } catch (e) {
       console.error("File processing or upload error:", e);
-      setError(`Error processing or uploading file: ${e.message}. Please check format or try again.`);
+      // Set the error state directly to the custom message thrown by the inner try/catch or format check.
+      // This avoids prepending "Error processing file:"
+      setError(e.message); 
+      
       // On error, send a default empty structure expected by App.jsx,
-      // rather than just an empty array.
+      // rather than just an empty array, to prevent further issues.
       onUpload({ Assets: [], Transactions: [], Deposits: [] }); 
     } finally {
       setInternalIsLoading(false);
@@ -57,13 +73,13 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
     if (f) {
       await processFile(f);
     }
-    e.target.value = null;
+    e.target.value = null; // Clear the input so same file can be re-selected
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isDataLoaded && !isLoading) {
+    if (!isDataLoaded && !isLoading) { // Prevent drag over while data is loaded or loading
       setIsDragOver(true);
     }
   };
@@ -79,7 +95,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
     e.stopPropagation();
     setIsDragOver(false);
 
-    if (isDataLoaded || isLoading) return;
+    if (isDataLoaded || isLoading) return; // Prevent drop while data is loaded or loading
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
@@ -113,7 +129,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
           sx={{
             p: 1.5,
             border: isDragOver ? '2px dashed #00C49F' : '2px dashed rgba(255,255,255,0.5)',
-            backgroundColor: isDragOver ? teal[800] : 'transparent',
+            backgroundColor: isDragOver ? theme.palette.background.paper : 'transparent', // Use theme color
             textAlign: 'center',
             cursor: isLoading ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s ease-in-out',
@@ -123,7 +139,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
             alignItems: 'center',
             gap: 1,
             '&:hover': {
-              backgroundColor: teal[800],
+              backgroundColor: theme.palette.background.paper, // Use theme color on hover
               borderColor: teal[500],
             },
           }}
@@ -139,7 +155,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
             <>
               <CloudUploadIcon sx={{ fontSize: 32, color: 'white' }} />
               <Typography variant="caption" sx={{ color: 'white' }}>
-                Drag & Drop
+                Drag & Drop JSON file here
               </Typography>
 
               <Button
@@ -156,7 +172,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
                   py: 0.5,
                 }}
               >
-                Upload JSON
+                Or Click to Upload
                 <input
                   hidden
                   id="file-input"
@@ -173,7 +189,27 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
 
       {error && (
         <Box mt={1}>
-          <Alert severity="error" sx={{ fontSize: '0.8rem', py: 0.5, px: 1 }}>{error}</Alert>
+          <Alert
+            severity="error"
+            sx={{
+              bgcolor: theme.palette.background.paper,
+              border: `1px solid ${theme.palette.error.main}`,
+              borderRadius: 2,
+              color: theme.palette.text.primary,
+              fontSize: '0.8rem',
+              py: 1,
+              px: 1.5,
+              '& .MuiAlert-icon': {
+                color: theme.palette.error.light,
+              },
+              '& .MuiAlert-message': {
+                color: theme.palette.text.primary,
+                fontWeight: 500,
+              }
+            }}
+          >
+            <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>{error}</Typography>
+          </Alert>
         </Box>
       )}
     </Box>
