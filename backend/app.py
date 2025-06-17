@@ -2,9 +2,10 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests, time, os
 import json # Import json for specific JSONDecodeError
-# from openai import OpenAI # <--- We won't use the OpenAI client for this specific call
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 
+load_dotenv() 
 app = Flask(__name__)
 CORS(app)
 
