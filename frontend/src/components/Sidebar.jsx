@@ -11,17 +11,13 @@ import {
   Typography,
   Divider,
   Box,
-  Chip,
   IconButton,
   CircularProgress, // Import CircularProgress for loading indicator
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import FavoriteIcon from '@mui/icons-material/Favorite';
 // New imports for the moved functionality
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ClearIcon from '@mui/icons-material/Clear';
 import FileUpload from './FileUpload'; // Import FileUpload component
@@ -35,7 +31,7 @@ export default function Sidebar({
     onUploadAssets,
     onClearData,
     onRefreshData,
-    isLoading 
+    isLoading
 }) {
   const navItems = [
     { text: 'Home', icon: <DashboardIcon sx={{ color: 'white' }} />, path: '/' },
@@ -101,7 +97,7 @@ export default function Sidebar({
                   },
                 },
                 '&:hover': {
-                  bgcolor: teal[700], // <-- Corrected: added closing square bracket here
+                  bgcolor: teal[700],
                 },
               }}
             >
@@ -117,26 +113,9 @@ export default function Sidebar({
       {/* New Section for Data Management (Upload, Refresh, Clear) */}
       <Divider sx={{ bgcolor: 'rgba(255,255,255,0.2)', my: 1 }} /> {/* Divider for separation */}
       <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-        <Chip
-          icon={isDataLoaded ? <CheckCircleIcon sx={{ color: 'white' }} /> : <CloudUploadIcon sx={{ color: 'white' }} />}
-          label={isDataLoaded ? "Data Loaded" : "Upload JSON"}
-          onClick={() => !isDataLoaded && document.getElementById('file-input').click()}
-          sx={{
-            backgroundColor: teal[700], // Slightly lighter teal for chip background
-            color: 'white',
-            border: '1px solid rgba(255,255,255,0.3)',
-            width: '100%', // Make chip span full width
-            justifyContent: 'flex-start', // Align icon and text to start
-            '&:hover': !isDataLoaded && {
-              backgroundColor: teal[600], // Darker hover for better feedback
-            },
-            cursor: isDataLoaded ? 'default' : 'pointer',
-            fontSize: '0.85rem',
-            py: 0.5, // Increase vertical padding slightly for better touch target
-          }}
-        />
-        {/* FileUpload component is hidden and triggered by the Chip */}
-        <FileUpload onUpload={onUploadAssets} disabled={isDataLoaded} hidden />
+
+        {/* FileUpload component now handles its own display based on isDataLoaded */}
+        <FileUpload onUpload={onUploadAssets} isDataLoaded={isDataLoaded} isLoading={isLoading} />
 
         {isDataLoaded && (
           <Box sx={{ display: 'flex', justifyContent: 'space-around', width: '100%', mt: 0.5 }}>
