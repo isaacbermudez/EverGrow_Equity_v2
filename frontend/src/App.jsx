@@ -31,7 +31,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import ClearIcon from '@mui/icons-material/Clear';
 
 // Standardize drawerWidth
-const drawerWidth = 240; // Using 240px from App.jsx as standard
+const drawerWidth = 200;
 
 const theme = createTheme({
   palette: {
@@ -199,8 +199,8 @@ export default function App() {
             onClearData={handleClearData}
             onRefreshData={handleRefreshData}
             isLoading={isLoading} // <--- Pass the new isLoading state here
-            // FileUploadComponent is not needed anymore since FileUpload is directly imported in Sidebar
-            // and the logic moved to App.jsx for data handling.
+          // FileUploadComponent is not needed anymore since FileUpload is directly imported in Sidebar
+          // and the logic moved to App.jsx for data handling.
           />
 
           <Box

@@ -89,7 +89,7 @@ export default function PortfolioCharts({ rows = [] }) {
     }
 
     return (
-      <Box sx={{ flex: 1, minWidth: 320, maxWidth: 500, p: 1 }}> 
+      <Box sx={{ flex: 1, minWidth: 320, maxWidth: 500, p: 1 }}>
         <Typography variant="subtitle2" sx={{ color: 'white', fontWeight: 600, mb: 1 }}>{title}</Typography>
         <Box sx={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -150,7 +150,7 @@ export default function PortfolioCharts({ rows = [] }) {
     <Box sx={{ width: '100%', p: 2 }}>
       <Box sx={{ mb: 2, textAlign: 'center' }}>
         <Typography
-          variant="h5"
+          variant="h4"
           sx={{
             color: 'white',
             fontWeight: 800,
@@ -158,10 +158,13 @@ export default function PortfolioCharts({ rows = [] }) {
             backgroundClip: 'text',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-            letterSpacing: '0.5px'
+            letterSpacing: '0.8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
         >
-          <Zap size={18} color="#f9a825" style={{ marginRight: 8 }} /> Portfolio Status
+          <Zap size={24} color="#f9a825" style={{ marginRight: 10 }} /> Portfolio Status
         </Typography>
         {hasData && (
           <ToggleButtonGroup

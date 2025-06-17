@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
-  Paper, // Keep Paper for WinnersLosersSection if it uses it
+  Paper,
   Grid,
   CircularProgress,
   Alert,
@@ -14,14 +14,19 @@ import {
   Container,
   ListItemButton,
   Chip,
-  Skeleton
+  Skeleton,
 } from '@mui/material';
+import { Zap } from 'lucide-react';
 import { getDaysAgoDate } from '../utils/dateUtils';
 import LinkIcon from '@mui/icons-material/Link';
 import ImageNotSupportedIcon from '@mui/icons-material/ImageNotSupported';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import { green, red } from '@mui/material/colors';
+
+const LOCAL_STORAGE_PORTFOLIO_NEWS_CACHE = 'portfolioNewsCache'; // Single key for all news
+const NEWS_CACHE_DURATION_HOURS = 1; // Cache news for 1 hour
+
 
 // Helper: if not a number, fall back to 0
 const safeNum = (n) => (typeof n === 'number' ? n : 0);
@@ -182,9 +187,6 @@ const WinnersLosersSection = React.memo(({ portfolioData, loading }) => {
 
   return (
     <Paper elevation={3} sx={{ p: 3, mb: 4, bgcolor: 'background.paper', borderRadius: 2 }}>
-      <Typography variant="h5" gutterBottom sx={{ color: 'text.primary', textAlign: 'center', mb: 2 }}>
-        Portfolio Performance
-      </Typography>
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           {renderAssetList(winners, true)}
@@ -292,7 +294,6 @@ NewsItem.displayName = 'NewsItem';
 
 // Memoized Latest News Card component
 const LatestNewsCard = React.memo(({ newsItems, loading }) => (
-  // Changed from Paper to Box to match the 'new version' look
   <Box sx={{ p: 2, mb: 2 }}>
     <Typography variant="h6" gutterBottom color="text.primary" sx={{ textAlign: 'center', fontWeight: 700 }}>
       Latest Portfolio News
@@ -324,7 +325,6 @@ const LatestNewsCard = React.memo(({ newsItems, loading }) => (
       </List>
     ) : (
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', py: 4 }}>
-        {/* Assumes /no-data.svg is available in your public folder */}
         <img src="/no-data.svg" alt="No positions" style={{ maxWidth: 160, opacity: 0.5, marginBottom: 16 }} />
         <Typography variant="body2" color="text.secondary">
           No news available for portfolio symbols.
@@ -381,7 +381,51 @@ export default function NewsSection({ portfolioData = [] }) {
     )];
   }, [portfolioData]);
 
-  const fetchNewsForSymbol = useCallback(async (symbol) => {
+  // --- LOCAL STORAGE HELPER FUNCTIONS ---
+
+  // Loads the entire news cache object from local storage
+  const loadPortfolioNewsCache = useCallback(() => {
+    try {
+      const storedData = localStorage.getItem(LOCAL_STORAGE_PORTFOLIO_NEWS_CACHE);
+      if (storedData) {
+        const cache = JSON.parse(storedData);
+        const currentTime = Date.now();
+        const freshCache = {};
+
+        // Filter out stale news items
+        for (const symbol in cache) {
+          if (cache.hasOwnProperty(symbol)) {
+            const { timestamp, newsItem } = cache[symbol];
+            const ageHours = (currentTime - timestamp) / (1000 * 60 * 60);
+            if (ageHours < NEWS_CACHE_DURATION_HOURS) {
+              freshCache[symbol] = { timestamp, newsItem };
+            } else {
+              console.log(`News for ${symbol} in cache is stale.`);
+            }
+          }
+        }
+        return freshCache;
+      }
+    } catch (e) {
+      console.error("Error loading portfolio news cache from local storage:", e);
+      localStorage.removeItem(LOCAL_STORAGE_PORTFOLIO_NEWS_CACHE); // Clear potentially corrupted cache
+    }
+    return {}; // Return empty object if no data or error
+  }, []);
+
+  // Saves the entire news cache object to local storage
+  const savePortfolioNewsCache = useCallback((cache) => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_PORTFOLIO_NEWS_CACHE, JSON.stringify(cache));
+    } catch (e) {
+      console.error("Error saving portfolio news cache to local storage:", e);
+    }
+  }, []);
+
+  // --- END LOCAL STORAGE HELPER FUNCTIONS ---
+
+
+  const fetchNewsForSymbolAPI = useCallback(async (symbol) => {
     const fromDate = getDaysAgoDate(30);
     const toDate = getDaysAgoDate(0);
 
@@ -401,7 +445,7 @@ export default function NewsSection({ portfolioData = [] }) {
       }
       // Ensure that news is only taken if it has a headline and datetime
       if (json.length > 0 && json[0].headline && json[0].datetime) {
-          return { ...json[0], symbol: symbol };
+        return { ...json[0], symbol: symbol };
       }
       return null; // Return null if no valid news is found
     } catch (err) {
@@ -416,100 +460,130 @@ export default function NewsSection({ portfolioData = [] }) {
   }, []);
 
   useEffect(() => {
-    const loadNews = async () => {
+    const loadAndCacheNews = async () => {
       setLoading(true);
       setError(null);
 
       if (portfolioData.length === 0 || relevantSymbols.length === 0) {
+
+        localStorage.removeItem('portfolioNewsCache');
+
         setAllLatestNews([]);
         setLoading(false);
+        savePortfolioNewsCache({}); // Clear news cache if no symbols
         return;
       }
 
-      try {
-        // Use Promise.allSettled to ensure all promises resolve or reject
-        const newsPromises = relevantSymbols.map(symbol =>
-          fetchNewsForSymbol(symbol)
-            .then(data => ({ status: 'fulfilled', value: data }))
-            .catch(reason => ({ status: 'rejected', reason, symbol }))
-        );
+      const currentCache = loadPortfolioNewsCache();
+      const newsPromises = [];
+      const updatedNewsCache = { ...currentCache }; // Start with current fresh cache
 
-        const results = await Promise.all(newsPromises);
-
-        const collectedNews = [];
-        const newsFetchErrors = [];
-
-        results.forEach((result) => {
-          if (result.status === 'fulfilled' && result.value) {
-            collectedNews.push(result.value);
-          } else if (result.status === 'rejected') {
-            newsFetchErrors.push(`${result.symbol}: ${result.reason.message || 'Unknown error'}`);
-          }
-        });
-
-        // Sort news based on winner/loser status and then by datetime
-        collectedNews.sort((a, b) => {
-            const aIsWinner = winnerSymbols.has(a.symbol);
-            const bIsWinner = winnerSymbols.has(b.symbol);
-            const aIsLoser = loserSymbols.has(a.symbol);
-            const bIsLoser = loserSymbols.has(b.symbol);
-
-            // Prioritize winners
-            if (aIsWinner && !bIsWinner) return -1;
-            if (!aIsWinner && bIsWinner) return 1;
-
-            // Then prioritize losers among non-winners
-            if (!aIsWinner && !bIsWinner) { // both are non-winners/non-losers or both are losers
-                if (aIsLoser && !bIsLoser) return -1;
-                if (!aIsLoser && bIsLoser) return 1;
-            }
-
-            // Finally, sort by datetime (latest first) within the same category (winner, loser, or neutral)
-            // Ensure datetime exists for sorting
-            const dateA = a.datetime || 0;
-            const dateB = b.datetime || 0;
-            return dateB - dateA;
-        });
-
-        setAllLatestNews(collectedNews);
-
-        // Error message handling based on how many symbols failed
-        if (newsFetchErrors.length > 0 && newsFetchErrors.length < relevantSymbols.length) {
-          setError(`Some news couldn't be loaded: ${newsFetchErrors.slice(0, 3).join(', ')}${newsFetchErrors.length > 3 ? '...' : ''}`);
-        } else if (newsFetchErrors.length === relevantSymbols.length && relevantSymbols.length > 0) {
-          setError("Could not load news for any portfolio symbols.");
+      // Determine which symbols need news fetched
+      for (const symbol of relevantSymbols) {
+        if (!updatedNewsCache[symbol]) {
+          // News not in cache or was stale, fetch it
+          newsPromises.push(
+            fetchNewsForSymbolAPI(symbol)
+              .then(data => ({ status: 'fulfilled', value: data, symbol }))
+              .catch(reason => ({ status: 'rejected', reason, symbol }))
+          );
         } else {
-          setError(null); // Clear error if all news loaded successfully
+          // News is fresh in cache, add it to collected news
+          newsPromises.push(Promise.resolve({ status: 'fulfilled', value: updatedNewsCache[symbol].newsItem, symbol }));
+        }
+      }
+
+      const results = await Promise.all(newsPromises);
+
+      const collectedNews = [];
+      const newsFetchErrors = [];
+
+      results.forEach((result) => {
+        if (result.status === 'fulfilled' && result.value) {
+          collectedNews.push(result.value);
+          // Update cache with newly fetched or fresh cached item
+          updatedNewsCache[result.symbol] = {
+            timestamp: Date.now(), // Update timestamp for all used news (fresh or newly fetched)
+            newsItem: result.value
+          };
+        } else if (result.status === 'rejected') {
+          newsFetchErrors.push(`${result.symbol}: ${result.reason.message || 'Unknown error'}`);
+          delete updatedNewsCache[result.symbol]; // Remove failed news from cache
+        }
+      });
+
+      // Save the updated, consolidated cache to local storage
+      savePortfolioNewsCache(updatedNewsCache);
+
+      // Sort news for display
+      collectedNews.sort((a, b) => {
+        const aIsWinner = winnerSymbols.has(a.symbol);
+        const bIsWinner = winnerSymbols.has(b.symbol);
+        const aIsLoser = loserSymbols.has(a.symbol);
+        const bIsLoser = loserSymbols.has(b.symbol);
+
+        if (aIsWinner && !bIsWinner) return -1;
+        if (!aIsWinner && bIsWinner) return 1;
+
+        if (!aIsWinner && !bIsWinner) {
+          if (aIsLoser && !bIsLoser) return -1;
+          if (!aIsLoser && bIsLoser) return 1;
         }
 
-      } catch (err) {
-        // This catch block would only be hit if Promise.all itself failed, which is rare with allSettled
-        setError("An unexpected error occurred while loading news.");
-        console.error("Error in loadNews (main catch):", err);
-      } finally {
-        setLoading(false);
+        const dateA = a.datetime || 0;
+        const dateB = b.datetime || 0;
+        return dateB - dateA;
+      });
+
+      setAllLatestNews(collectedNews);
+
+      if (newsFetchErrors.length > 0 && newsFetchErrors.length < relevantSymbols.length) {
+        setError(`Some news couldn't be loaded: ${newsFetchErrors.slice(0, 3).join(', ')}${newsFetchErrors.length > 3 ? '...' : ''}`);
+      } else if (newsFetchErrors.length === relevantSymbols.length && relevantSymbols.length > 0) {
+        setError("Could not load news for any portfolio symbols.");
+      } else {
+        setError(null);
       }
+
+      setLoading(false);
     };
 
-    loadNews();
-  }, [portfolioData, relevantSymbols, fetchNewsForSymbol, winnerSymbols, loserSymbols]); // Dependency array should include all values used from props/state that could change
+    loadAndCacheNews();
+  }, [portfolioData, relevantSymbols, fetchNewsForSymbolAPI, loadPortfolioNewsCache, savePortfolioNewsCache, winnerSymbols, loserSymbols]);
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4 }}>
+      <Box sx={{ mb: 2, textAlign: 'center' }}>
+        <Typography
+          variant="h4"
+          sx={{
+            color: 'white',
+            fontWeight: 800,
+            background: 'linear-gradient(45deg, #00C49F, #0088FE, #FFBB28)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '0.8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <Zap size={24} color="#f9a825" style={{ marginRight: 10 }} />  Market Insights
+        </Typography>
+      </Box>
       {error && <Alert severity="warning" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {portfolioData.length === 0 && !loading ? ( // Show message if no data and not loading
+      {portfolioData.length === 0 && !loading ? (
         <Alert severity="info">
           Please upload your portfolio assets to see relevant news and portfolio insights.
         </Alert>
       ) : (
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            {/* Pass portfolioData and loading to WinnersLosersSection */}
             <WinnersLosersSection portfolioData={portfolioData} loading={loading} />
           </Grid>
           <Grid item xs={12}>
-            {/* LatestNewsCard now correctly receives its props */}
             <LatestNewsCard newsItems={allLatestNews} loading={loading} />
           </Grid>
         </Grid>

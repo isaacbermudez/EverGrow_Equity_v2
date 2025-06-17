@@ -1,16 +1,18 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests, time, os
-import json # Import json for specific JSONDecodeError
+import json
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
-load_dotenv() 
+load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "YOUR_API_KEY")
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "YOUR_FINNHUB_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "YOUR_OPENROUTER_API_KEY_HERE")
+ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "YOUR_ALPHA_VANTAGE_API_KEY") # New API Key
+
 DEEPDIVE_SYSTEM_PROMPT = """
 Actúa como DeepDive Stocks, un analista de empresas para inversión. Tu tarea es realizar un análisis profesional, exhaustivo y estratégico en español para inversores avanzados. Usa navegación web si está disponible. Evalúa modelo de negocio, noticias recientes, directiva, sector, resiliencia, posición en el mercado, si la empresa es Blue Chip o Multibagger, explicación de variación reciente del precio y el valor intrínseco estimado. Usa tablas con esta estructura exacta para los siguientes bloques:
 
@@ -54,35 +56,46 @@ Actúa como DeepDive Stocks, un analista de empresas para inversión. Tu tarea e
 Luego asigna un color de semáforo (Verde, Amarillo o Rojo) con justificación clara. Sugiere el perfil de inversor ideal (crecimiento, valor, dividendos, conservador o agresivo) y tipo de inversión (largo/corto plazo). Si hay más de una empresa, haz una comparativa y concluye cuál es más atractiva. Incluye resumen del desempeño en 5 años. Finaliza con 'Fuentes y Fecha de Consulta' con hipervínculos. No uses datos ficticios ni des recomendaciones explícitas. Sé claro, directo y profesional.
 """
 
-# The OpenAI client is no longer needed for direct OpenRouter calls if you want header access
-# openrouter_client = OpenAI(
-#     api_key=OPENROUTER_API_KEY,
-#     base_url="https://openrouter.ai/api/v1"
-# )
-
 print(f"FINNHUB_API_KEY loaded: {FINNHUB_API_KEY}")
-print(f"OPENROUTER_API_KEY loaded: {'*****' if OPENROUTER_API_KEY else 'NOT_SET'}") 
+print(f"OPENROUTER_API_KEY loaded: {'*****' if OPENROUTER_API_KEY else 'NOT_SET'}")
+print(f"ALPHA_VANTAGE_API_KEY loaded: {'*****' if ALPHA_VANTAGE_API_KEY else 'NOT_SET'}") # New print
 
-
-RATE_LIMIT = 60         # max calls / minute for your Flask backend to Finnhub
-CACHE_TTL_QUOTE = 60    # seconds for stock quotes
-CACHE_TTL_NEWS = 300    # seconds (5 minutes for news)
-MARKET_STATUS_CACHE_TTL = 300 # seconds (5 minutes for market status)
+RATE_LIMIT = 60
+CACHE_TTL_QUOTE = 60
+CACHE_TTL_NEWS = 300
+MARKET_STATUS_CACHE_TTL = 300
+CACHE_TTL_COMPANY_PROFILE = 86400
+CACHE_TTL_BASIC_FINANCIALS = 3600 # Still used for Alpha Vantage data now
+CACHE_TTL_ALPHA_VANTAGE_FINANCIALS = 86400 # Alpha Vantage fundamental data is less frequent, cache for 24 hours
+CACHE_TTL_CHAT = 3600
 
 request_timestamps = []
 quote_cache = {}
 market_status_cache = {}
-news_cache = {} 
+news_cache = {}
+company_profile_cache = {}
+basic_financials_cache = {} # This will now store Alpha Vantage data
 chat_cache = {}
-CACHE_TTL_CHAT = 3600 
 
-def check_rate_limit():
+# Alpha Vantage specific rate limit tracking
+alpha_vantage_timestamps = []
+ALPHA_VANTAGE_RATE_LIMIT = 5 # 5 calls per minute for free tier
+
+def check_global_rate_limit():
     now = time.time()
     global request_timestamps
     request_timestamps = [t for t in request_timestamps if now - t < 60]
     if len(request_timestamps) >= RATE_LIMIT:
-        raise RuntimeError("Rate limit exceeded")
+        raise RuntimeError("Global rate limit exceeded. Please wait a moment and try again.")
     request_timestamps.append(now)
+
+def check_alpha_vantage_rate_limit():
+    now = time.time()
+    global alpha_vantage_timestamps
+    alpha_vantage_timestamps = [t for t in alpha_vantage_timestamps if now - t < 60]
+    if len(alpha_vantage_timestamps) >= ALPHA_VANTAGE_RATE_LIMIT:
+        raise RuntimeError("Alpha Vantage rate limit exceeded (5 calls per minute). Please wait a moment and try again.")
+    alpha_vantage_timestamps.append(now)
 
 def get_quote(symbol):
     now = time.time()
@@ -90,9 +103,9 @@ def get_quote(symbol):
         ts, data = quote_cache[symbol]
         if now - ts < CACHE_TTL_QUOTE:
             return data
-    
-    check_rate_limit()
-    
+
+    check_global_rate_limit() # Use global rate limit for Finnhub quotes
+
     url = f"https://finnhub.io/api/v1/quote?symbol={symbol}&token={FINNHUB_API_KEY}"
     resp = requests.get(url)
     resp.raise_for_status()
@@ -152,17 +165,15 @@ def get_market_status():
         ts, data = market_status_cache[exchange]
         if now - ts < MARKET_STATUS_CACHE_TTL:
             return jsonify(data)
-    
+
     try:
-        check_rate_limit()
-        
+        check_global_rate_limit() # Use global rate limit for Finnhub
+
         url = f"https://finnhub.io/api/v1/market/status?exchange={exchange}&token={FINNHUB_API_KEY}"
         resp = requests.get(url)
         resp.raise_for_status()
 
         response_text = resp.text
-        # print(f"Finnhub Market Status raw response: {response_text[:500]}...")
-
         data = resp.json()
         market_status_cache[exchange] = (now, data)
         return jsonify(data)
@@ -182,7 +193,6 @@ def get_market_status():
 @app.route("/api/company-news", methods=["GET"])
 def get_company_news():
     symbol = request.args.get("symbol")
-    # Default to 30 days ago for 'from' and today for 'to'
     today = datetime.now().strftime('%Y-%m-%d')
     thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
     from_date = request.args.get("from", thirty_days_ago)
@@ -194,27 +204,21 @@ def get_company_news():
     cache_key = f"{symbol}-{from_date}-{to_date}"
     now = time.time()
 
-    # Cache hit for news?
     if cache_key in news_cache:
         ts, data = news_cache[cache_key]
         if now - ts < CACHE_TTL_NEWS:
             return jsonify(data)
-    
+
     try:
-        check_rate_limit()
-        
-        # company-news endpoint doesn't require symbol= in query params, it's part of the path
-        # but the Finnhub Python client might abstract that. For direct API call, it's simpler
-        # Finnhub API docs show it as /news?symbol=...
+        check_global_rate_limit() # Use global rate limit for Finnhub
+
         url = f"https://finnhub.io/api/v1/company-news?symbol={symbol}&from={from_date}&to={to_date}&token={FINNHUB_API_KEY}"
         resp = requests.get(url)
         resp.raise_for_status()
 
         response_text = resp.text
-        # print(f"Finnhub Company News raw response for {symbol}: {response_text[:500]}...")
-
         data = resp.json()
-        news_cache[cache_key] = (now, data) # Cache the new news
+        news_cache[cache_key] = (now, data)
         return jsonify(data)
     except RuntimeError as e:
         print(f"Rate limit exceeded for Finnhub News API: {e}")
@@ -250,6 +254,155 @@ def get_fundamentals_from_backend(symbol):
         return resp.json()
     except Exception as e:
         return {"error": str(e)}
+
+# Replaced get_basic_financials_from_backend with Alpha Vantage logic
+def get_alpha_vantage_financial_data(symbol, function_type):
+    """
+    Fetches fundamental financial data from Alpha Vantage.
+    function_type can be 'INCOME_STATEMENT', 'BALANCE_SHEET', 'CASH_FLOW', 'OVERVIEW'.
+    """
+    if not ALPHA_VANTAGE_API_KEY or ALPHA_VANTAGE_API_KEY == "YOUR_ALPHA_VANTAGE_API_KEY":
+        return {"error": "ALPHA_VANTAGE_API_KEY is not set correctly in your environment variables."}
+
+    check_alpha_vantage_rate_limit() # Use Alpha Vantage specific rate limit
+
+    url = f"https://www.alphavantage.co/query?function={function_type}&symbol={symbol}&apikey={ALPHA_VANTAGE_API_KEY}"
+    response_text = ""
+    try:
+        resp = requests.get(url)
+        resp.raise_for_status()
+        response_text = resp.text
+
+        data = resp.json()
+
+        # Alpha Vantage often returns {"Information": "..."} for rate limits or invalid keys
+        if "Information" in data and "rate limit" in data["Information"].lower():
+            return {"error": f"Alpha Vantage Rate Limit Exceeded: {data['Information']}"}
+        if "Error Message" in data:
+            return {"error": f"Alpha Vantage API Error for {function_type} - {symbol}: {data['Error Message']}"}
+        if not data or not any(key in data for key in ["annualReports", "quarterlyReports", "Symbol", "AssetType"]):
+            # Check for expected keys, 'Symbol' and 'AssetType' for OVERVIEW, reports for financials
+            return {"error": f"No {function_type.replace('_', ' ').lower()} data found for symbol: {symbol}. Raw response: {response_text}"}
+
+        return data
+    except json.JSONDecodeError as e:
+        print(f"JSON Decode Error from Alpha Vantage ({function_type}) for {symbol}: {e}. Raw response: '{response_text}'")
+        return {"error": f"Failed to parse Alpha Vantage response for {function_type} as JSON for {symbol}. Error: {e}. Raw: {response_text[:200]}..."}
+    except requests.exceptions.RequestException as e:
+        print(f"Request Exception to Alpha Vantage ({function_type}) API for {symbol}: {e}. URL: {url}")
+        if hasattr(e, 'response') and e.response is not None:
+            return {"error": f"HTTP error {e.response.status_code} from Alpha Vantage ({function_type}) API: {e.response.text}"}
+        return {"error": f"Failed to connect to Alpha Vantage ({function_type}) API for {symbol}: {e}"}
+    except Exception as e:
+        print(f"An unexpected error occurred in get_alpha_vantage_financial_data for {symbol} ({function_type}): {e}")
+        return {"error": f"An unexpected server error occurred while fetching {function_type} from Alpha Vantage: {e}"}
+
+
+@app.route("/api/company-profile", methods=["GET"])
+def get_company_profile():
+    symbol = request.args.get("symbol")
+    if not symbol:
+        return jsonify({"error": "Symbol is required."}), 400
+
+    now = time.time()
+    if symbol in company_profile_cache:
+        ts, data = company_profile_cache[symbol]
+        if now - ts < CACHE_TTL_COMPANY_PROFILE:
+            return jsonify(data)
+
+    try:
+        check_global_rate_limit() # Use global rate limit for Finnhub
+        url = f"https://finnhub.io/api/v1/stock/profile2?symbol={symbol}&token={FINNHUB_API_KEY}"
+        resp = requests.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+        if not data:
+            return jsonify({"error": f"No company profile found for symbol: {symbol}"}), 404
+        company_profile_cache[symbol] = (now, data)
+        return jsonify(data)
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 429
+    except Exception as e:
+        print(f"Error fetching company profile for {symbol}: {e}")
+        return jsonify({"error": f"Failed to fetch company profile for {symbol}: {e}"}), 500
+
+@app.route("/api/stock-metrics", methods=["GET"])
+def get_stock_metrics_api():
+    symbol = request.args.get("symbol")
+    if not symbol:
+        return jsonify({"error": "Symbol is required."}), 400
+
+    try:
+        check_global_rate_limit() # Use global rate limit for Finnhub
+        data = get_fundamentals_from_backend(symbol)
+        if "error" in data:
+            return jsonify(data), 500
+        if not data or not data.get("metric"):
+             return jsonify({"error": f"No fundamental metrics found for symbol: {symbol}"}), 404
+        return jsonify(data)
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 429
+    except Exception as e:
+        print(f"Error in get_stock_metrics_api for {symbol}: {e}")
+        return jsonify({"error": f"Failed to fetch fundamental metrics for {symbol}: {e}"}), 500
+
+# Updated Endpoint for Basic Financials to use Alpha Vantage
+@app.route("/api/basic-financials", methods=["GET"])
+def get_basic_financials_api():
+    symbol = request.args.get("symbol")
+    # metricType for Alpha Vantage will map to different functions:
+    # 'overview', 'incomeStatement', 'balanceSheet', 'cashFlow'
+    metric_type = request.args.get("metricType", "overview") # Default to 'overview'
+
+    if not symbol:
+        return jsonify({"error": "Symbol is required."}), 400
+
+    # Map request metric_type to Alpha Vantage FUNCTION
+    alpha_vantage_function = None
+    if metric_type.lower() == 'overview':
+        alpha_vantage_function = 'OVERVIEW'
+    elif metric_type.lower() == 'incomestatement':
+        alpha_vantage_function = 'INCOME_STATEMENT'
+    elif metric_type.lower() == 'balancesheet':
+        alpha_vantage_function = 'BALANCE_SHEET'
+    elif metric_type.lower() == 'cashflow':
+        alpha_vantage_function = 'CASH_FLOW'
+    else:
+        return jsonify({"error": f"Invalid metricType: {metric_type}. Supported: overview, incomeStatement, balanceSheet, cashFlow."}), 400
+
+    cache_key = f"{symbol}-{alpha_vantage_function}"
+    now = time.time()
+
+    if cache_key in basic_financials_cache:
+        ts, data = basic_financials_cache[cache_key]
+        if now - ts < CACHE_TTL_ALPHA_VANTAGE_FINANCIALS:
+            return jsonify(data)
+
+    try:
+        data = get_alpha_vantage_financial_data(symbol, alpha_vantage_function)
+
+        if "error" in data:
+            # Alpha Vantage API errors often contain "Note: ..." or "Error Message"
+            if "Rate Limit Exceeded" in data["error"]:
+                return jsonify(data), 429 # Too Many Requests
+            elif "invalid API key" in data["error"].lower() or "not a valid" in data["error"].lower():
+                return jsonify(data), 401 # Unauthorized
+            elif "symbol" in data["error"].lower() and ("invalid" in data["error"].lower() or "not found" in data["error"].lower()):
+                return jsonify(data), 404 # Not Found
+            else:
+                return jsonify(data), 500 # Generic server error for unhandled helper errors
+
+        # Alpha Vantage returns an empty object {} or a message if no data is found for the symbol
+        if not data:
+            return jsonify({"error": f"No data returned from Alpha Vantage for {symbol} ({metric_type})."}), 404
+
+        basic_financials_cache[cache_key] = (now, data)
+        return jsonify(data)
+    except RuntimeError as e: # Catch local rate limit from check_alpha_vantage_rate_limit
+        return jsonify({"error": str(e)}), 429
+    except Exception as e:
+        print(f"Error in get_basic_financials_api for {symbol} ({metric_type}): {e}")
+        return jsonify({"error": f"An unexpected server error occurred in the API endpoint for {symbol}: {e}"}), 500
 
 
 @app.route("/api/chat", methods=["POST"])
@@ -303,11 +456,30 @@ def chat_with_gpt():
                 "type": "function",
                 "function": {
                     "name": "get_fundamentals",
-                    "description": "Obtiene métricas fundamentales de una empresa.",
+                    "description": "Obtiene métricas fundamentales de una empresa (desde Finnhub).", # Updated description
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "symbol": { "type": "string" }
+                        },
+                        "required": ["symbol"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_basic_financials",
+                    "description": "Obtiene datos financieros básicos de una empresa, incluyendo información general, estado de resultados, balance general o estado de flujo de efectivo (desde Alpha Vantage).", # Updated description
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "symbol": { "type": "string", "description": "Símbolo bursátil de la empresa." },
+                            "metric_type": {
+                                "type": "string",
+                                "description": "Tipo de dato financiero a obtener. Puede ser 'overview' (información general y métricas clave), 'incomeStatement' (estado de resultados), 'balanceSheet' (balance general) o 'cashFlow' (estado de flujo de efectivo). Por defecto es 'overview'.",
+                                "enum": ["overview", "incomeStatement", "balanceSheet", "cashFlow"]
+                            }
                         },
                         "required": ["symbol"]
                     }
@@ -337,21 +509,28 @@ def chat_with_gpt():
 
         message = data["choices"][0]["message"]
 
-        # TOOL CALL HANDLING
         if "tool_calls" in message:
             tool_outputs = []
             for tool_call in message["tool_calls"]:
                 fn_name = tool_call["function"]["name"]
                 args = json.loads(tool_call["function"]["arguments"])
 
-                if fn_name == "get_stock_quote":
-                    result = get_quote(args["symbol"])
-                elif fn_name == "get_company_news":
-                    result = get_company_news_from_backend(args["symbol"], args.get("from_date"), args.get("to_date"))
-                elif fn_name == "get_fundamentals":
-                    result = get_fundamentals_from_backend(args["symbol"])
-                else:
-                    result = {"error": f"Unknown tool: {fn_name}"}
+                result = {"error": f"Unknown tool: {fn_name}"}
+
+                try:
+                    if fn_name == "get_stock_quote":
+                        result = get_quote(args["symbol"])
+                    elif fn_name == "get_company_news":
+                        result = get_company_news_from_backend(args["symbol"], args.get("from_date"), args.get("to_date"))
+                    elif fn_name == "get_fundamentals":
+                        result = get_fundamentals_from_backend(args["symbol"])
+                    elif fn_name == "get_basic_financials":
+                        # Call Alpha Vantage helper function
+                        result = get_alpha_vantage_financial_data(args["symbol"], args.get("metric_type", "OVERVIEW").upper())
+                except RuntimeError as e:
+                    result = {"error": str(e)}
+                except Exception as e:
+                    result = {"error": f"Error executing tool '{fn_name}': {e}"}
 
                 tool_outputs.append({
                     "role": "tool",
@@ -379,8 +558,10 @@ def chat_with_gpt():
 
 
 if __name__ == "__main__":
-    if not OPENROUTER_API_KEY:
-        print("WARNING: OPENROUTER_API_KEY is not set. AI chat features may fail.")
-    if not FINNHUB_API_KEY:
-        print("WARNING: FINNHUB_API_KEY is not set. Stock data features may not work.")
+    if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "YOUR_OPENROUTER_API_KEY_HERE":
+        print("WARNING: OPENROUTER_API_KEY is not set or is default. AI chat features may fail.")
+    if not FINNHUB_API_KEY or FINNHUB_API_KEY == "YOUR_API_KEY":
+        print("WARNING: FINNHUB_API_KEY is not set or is default. Stock data features may not work.")
+    if not ALPHA_VANTAGE_API_KEY or ALPHA_VANTAGE_API_KEY == "YOUR_ALPHA_VANTAGE_API_KEY":
+        print("WARNING: ALPHA_VANTAGE_API_KEY is not set or is default. Alpha Vantage features may not work.")
     app.run(debug=True, port=5000)

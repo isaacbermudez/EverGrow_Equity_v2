@@ -29,20 +29,19 @@ import FileUpload from './FileUpload'; // Import FileUpload component
 import { NavLink } from 'react-router-dom';
 import { teal } from '@mui/material/colors';
 
-// drawerWidth now comes from props, defaulting to 240 if not provided
 export default function Sidebar({
     drawerWidth = 100,
     isDataLoaded,
     onUploadAssets,
     onClearData,
     onRefreshData,
-    isLoading // <--- NEW PROP: to indicate loading state for refresh
+    isLoading 
 }) {
   const navItems = [
     { text: 'Home', icon: <DashboardIcon sx={{ color: 'white' }} />, path: '/' },
     { text: 'News', icon: <NewspaperIcon sx={{ color: 'white' }} />, path: '/news' },
     { text: 'Financials', icon: <AccountBalanceIcon sx={{ color: 'white' }} />, path: '/financials' },
-    { text: 'Wealth', icon: <FavoriteIcon sx={{ color: 'white' }} />, path: '/wealth' },
+   // { text: 'Wealth', icon: <FavoriteIcon sx={{ color: 'white' }} />, path: '/wealth' },
   ];
 
   return (
