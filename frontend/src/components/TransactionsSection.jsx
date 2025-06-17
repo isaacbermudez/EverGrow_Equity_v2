@@ -12,13 +12,13 @@ import {
   TableHead,
   TableRow,
   useTheme,
-  Alert,
   Tabs,
   Tab,
 } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
-import { DollarSign, Repeat, TrendingUp, TrendingDown } from 'lucide-react'; // Removed Wallet and Tag icons for deposits/fees
-import moment from 'moment'; // For date handling and grouping
+import { DollarSign, Repeat } from 'lucide-react'; // TrendingUp, TrendingDown removed as they are not used
+import moment from 'moment';
+import { teal } from '@mui/material/colors'; // Import teal for consistent colors
 
 // Helper for safe number formatting
 const safeNum = (n) => (typeof n === 'number' || typeof n === 'string' && !isNaN(parseFloat(n)) ? parseFloat(n) : 0);
@@ -35,12 +35,15 @@ const formatDate = (dateString) => {
     return moment.utc(dateString).format('YYYY-MM-DD');
   } catch (e) {
     console.error("Error parsing date:", dateString, e);
-    return dateString; // Fallback to original string if parsing fails
+    return dateString;
   }
 };
 
 
 export default function TransactionsSection({ transactions = [] }) {
+  // DEBUG LOG: What data is received by this component?
+  console.log("TransactionsSection: Received transactions prop:", transactions);
+
   const theme = useTheme();
   const [selectedTab, setSelectedTab] = useState(0);
 
@@ -48,23 +51,25 @@ export default function TransactionsSection({ transactions = [] }) {
     setSelectedTab(newValue);
   };
 
-  // Memoized calculations for transaction summaries (focused on transactions only)
-  const { totalTransactions, totalBuyingPower, platformsSummary, monthlyTransactionCountData } = useMemo(() => {
+  // Memoized calculations for transaction summaries, adapted for your data format
+  const { totalTransactions, totalAmountInvested, tickerInvestmentSummary, monthlyTransactionCountData, monthlyInvestmentAmountData } = useMemo(() => {
     let totalTrans = transactions.length;
-    let totalBP = 0;
-    const platforms = {};
-    const monthlyTransactionCounts = {};
+    let totalInvested = 0;
+    const tickerInvestments = {}; // Map ticker to total invested amount
+    const monthlyTransactionCounts = {}; // Count of transactions per month
+    const monthlyInvestments = {}; // Sum of Total_Invested per month
 
     transactions.forEach(t => {
-      totalBP += safeNum(t.Buying_Power); // Sum up Buying_Power for total
+      const amountInvested = safeNum(t.Total_Invested);
+      totalInvested += amountInvested;
 
-      const platformName = t.Platform || 'N/A';
-      // Summarizing Buying_Power per platform
-      platforms[platformName] = (platforms[platformName] || 0) + safeNum(t.Buying_Power);
+      // Use Ticker for summary as 'Platform' field is not present in this data
+      const ticker = t.Ticker || 'N/A';
+      tickerInvestments[ticker] = (tickerInvestments[ticker] || 0) + amountInvested;
 
-      // Aggregate for monthly trends (counting transactions per month)
       const monthYear = moment.utc(t.Date).format('YYYY-MM');
-      monthlyTransactionCounts[monthYear] = (monthlyTransactionCounts[monthYear] || 0) + 1; // Count transactions
+      monthlyTransactionCounts[monthYear] = (monthlyTransactionCounts[monthYear] || 0) + 1;
+      monthlyInvestments[monthYear] = (monthlyInvestments[monthYear] || 0) + amountInvested;
     });
 
     // Convert monthly data objects to sorted arrays
@@ -72,61 +77,31 @@ export default function TransactionsSection({ transactions = [] }) {
       .sort()
       .map(month => ({ month, count: monthlyTransactionCounts[month] }));
 
+    const sortedMonthlyInvestmentData = Object.keys(monthlyInvestments)
+      .sort()
+      .map(month => ({ month, amount: monthlyInvestments[month] }));
 
     return {
       totalTransactions: totalTrans,
-      totalBuyingPower: totalBP,
-      platformsSummary: Object.entries(platforms).map(([platform, amount]) => ({ platform, amount })),
-      monthlyTransactionCountData: sortedMonthlyTransactionCountData
+      totalAmountInvested: totalInvested,
+      tickerInvestmentSummary: Object.entries(tickerInvestments).map(([ticker, amount]) => ({ ticker, amount })),
+      monthlyTransactionCountData: sortedMonthlyTransactionCountData,
+      monthlyInvestmentAmountData: sortedMonthlyInvestmentData, // Added new monthly investment data
     };
   }, [transactions]);
 
 
-  if (transactions.length === 0) {
-    return (
-      <Box sx={{
-        p: 3,
-        flexGrow: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0f172a, #1e293b)',
-        minHeight: 'calc(100vh - 64px)', // Adjust based on your header height
-        textAlign: 'center'
-      }}>
-        <img src="/no-data.svg" alt="No data" style={{ maxWidth: '250px', opacity: 0.6, marginBottom: 24 }} />
-        <Typography variant="h5" color="text.secondary" gutterBottom>
-          No hay datos de transacciones cargados.
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Por favor, suba su archivo JSON de cartera para comenzar.
-        </Typography>
-      </Box>
-    );
-  }
+  // Removed the "No transaction data loaded" message block
+  // The component will simply display empty charts/tables if transactions.length === 0
 
-  const SummaryCard = ({ icon: Icon, title, value, color }) => (
-    <Paper elevation={3} sx={{
-      p: 2,
-      bgcolor: theme.palette.background.paper,
-      borderRadius: 2,
-      display: 'flex',
-      alignItems: 'center',
-      gap: 2
-    }}>
-      <Icon size={32} color={color || theme.palette.primary.main} />
-      <Box>
-        <Typography variant="caption" color="text.secondary">{title}</Typography>
-        <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.palette.text.primary }}>
-          {value}
-        </Typography>
-      </Box>
-    </Paper>
-  );
+
+  // Removed SummaryCard component definition and its usage
+  // The user requested to only show charts for now.
+
 
   return (
-    <Box p={3} sx={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)', flexGrow: 1 }}>
+    <Box sx={{ width: '100%', p: 2 }}> {/* Removed background gradient from root Box */}
+      {/* Main Title - Styled to match PortfolioCharts.jsx */}
       <Typography
         variant="h4"
         sx={{
@@ -143,123 +118,158 @@ export default function TransactionsSection({ transactions = [] }) {
           mb: 4
         }}
       >
-        <Repeat size={24} color="#f9a825" style={{ marginRight: 10 }} /> Resumen y Análisis de Transacciones
+        <Repeat size={24} color="#f9a825" style={{ marginRight: 10 }} /> Transaction Summary and Analysis
       </Typography>
-
-      {/* Transaction Summary Cards (Adjusted to only show relevant metrics) */}
-      <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} sm={6} md={6}>
-          <SummaryCard icon={Repeat} title="Total Transacciones" value={totalTransactions} color={theme.palette.info.main} />
-        </Grid>
-        <Grid item xs={12} sm={6} md={6}>
-          <SummaryCard icon={DollarSign} title="Total Poder de Compra" value={formatCurrency(totalBuyingPower)} color={theme.palette.success.main} />
-        </Grid>
-      </Grid>
 
       {/* Tabs for different transaction views */}
       <Paper elevation={3} sx={{ bgcolor: theme.palette.background.paper, borderRadius: 2, mb: 4 }}>
         <Tabs value={selectedTab} onChange={handleTabChange} centered indicatorColor="primary" textColor="primary">
-          <Tab label="Vista General" />
-          <Tab label="Tendencia Mensual" />
-          <Tab label="Detalle de Transacciones" />
+
+          <Tab label="Monthly Trend" />
+          <Tab label="Transaction Details" />
         </Tabs>
       </Paper>
 
-      {/* Tab Content */}
       {selectedTab === 0 && (
         <Grid container spacing={3}>
-          {/* Platform Distribution Chart/Table */}
+          {/* Ticker/Investment Amount Distribution Chart */}
           <Grid item xs={12} md={6}>
             <Paper elevation={3} sx={{ p: 3, bgcolor: theme.palette.background.paper, borderRadius: 2, height: '100%' }}>
-              <Typography variant="h6" gutterBottom sx={{ color: theme.palette.text.primary }}>
-                Poder de Compra por Plataforma
+              <Typography variant="h6" gutterBottom sx={{ color: 'white', fontWeight: 600 }}>
+                Investment Amount by Ticker
               </Typography>
-              {platformsSummary.length > 0 ? (
+              {tickerInvestmentSummary.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={platformsSummary} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+                  <BarChart data={tickerInvestmentSummary} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
-                    <XAxis dataKey="platform" stroke={theme.palette.text.secondary} tickFormatter={(value) => value.length > 10 ? `${value.substring(0, 10)}...` : value} />
+                    <XAxis dataKey="ticker" stroke={theme.palette.text.secondary} tickFormatter={(value) => value.length > 10 ? `${value.substring(0, 10)}...` : value} />
                     <YAxis stroke={theme.palette.text.secondary} tickFormatter={formatCurrency} />
                     <Tooltip formatter={formatCurrency} contentStyle={{ backgroundColor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}` }} itemStyle={{ color: theme.palette.text.primary }} />
-                    <Bar dataKey="amount" fill={theme.palette.primary.main} name="Poder de Compra" />
+                    <Bar dataKey="amount" fill={teal[500]} name="Invested Amount" />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <Typography variant="body2" color="text.secondary">No hay datos de poder de compra por plataforma.</Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} /> {/* Matched no-data image style */}
+                  <Typography variant="body2" color="text.secondary">No investment amount data by ticker.</Typography>
+                </Box>
               )}
             </Paper>
           </Grid>
-
-          {/* Average Transaction Metrics (Adjusted for general transaction metrics) */}
-          <Grid item xs={12} md={6}>
-            <Paper elevation={3} sx={{ p: 3, bgcolor: theme.palette.background.paper, borderRadius: 2, height: '100%' }}>
-              <Typography variant="h6" gutterBottom sx={{ color: theme.palette.text.primary }}>
-                Promedio de Transacciones
-              </Typography>
-              <Box display="flex" flexDirection="column" gap={2}>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">Poder de compra promedio por transacción:</Typography>
-                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: theme.palette.text.primary }}>
-                    {formatCurrency(totalBuyingPower / totalTransactions)}
-                  </Typography>
-                </Box>
-              </Box>
-            </Paper>
-          </Grid>
-        </Grid>
-      )}
-
-      {selectedTab === 1 && (
-        <Grid container spacing={3}>
           {/* Monthly Transaction Count Trend */}
-          <Grid item xs={12}>
+          <Grid item xs={12} md={6}>
             <Paper elevation={3} sx={{ p: 3, bgcolor: theme.palette.background.paper, borderRadius: 2 }}>
-              <Typography variant="h6" gutterBottom sx={{ color: theme.palette.text.primary }}>
-                Tendencia Mensual de Transacciones
+              <Typography variant="h6" gutterBottom sx={{ color: 'white', fontWeight: 600 }}>
+                Monthly Transaction Count Trend
               </Typography>
               {monthlyTransactionCountData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={monthlyTransactionCountData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
                     <XAxis dataKey="month" stroke={theme.palette.text.secondary} />
-                    <YAxis stroke={theme.palette.text.secondary} /> {/* YAxis for count, not currency */}
+                    <YAxis stroke={theme.palette.text.secondary} />
                     <Tooltip contentStyle={{ backgroundColor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}` }} itemStyle={{ color: theme.palette.text.primary }} />
                     <Legend />
-                    <Line type="monotone" dataKey="count" stroke={theme.palette.info.main} activeDot={{ r: 8 }} name="Número de Transacciones" />
+                    <Line type="monotone" dataKey="count" stroke={theme.palette.info.main} activeDot={{ r: 8 }} name="Number of Transactions" />
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <Typography variant="body2" color="text.secondary">No hay datos suficientes para la tendencia mensual de transacciones.</Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
+                  <Typography variant="body2" color="text.secondary">No sufficient data for monthly transaction trend.</Typography>
+                </Box>
+              )}
+            </Paper>
+          </Grid>
+
+          {/* Monthly Investment Amount Trend */}
+          <Grid item xs={12} md={6}>
+            <Paper elevation={3} sx={{ p: 3, bgcolor: theme.palette.background.paper, borderRadius: 2 }}>
+              <Typography variant="h6" gutterBottom sx={{ color: 'white', fontWeight: 600 }}>
+                Monthly Investment Amount Trend
+              </Typography>
+              {monthlyInvestmentAmountData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={monthlyInvestmentAmountData} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+                    <XAxis dataKey="month" stroke={theme.palette.text.secondary} />
+                    <YAxis stroke={theme.palette.text.secondary} tickFormatter={formatCurrency} />
+                    <Tooltip formatter={formatCurrency} contentStyle={{ backgroundColor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}` }} itemStyle={{ color: theme.palette.text.primary }} />
+                    <Legend />
+                    <Line type="monotone" dataKey="amount" stroke={theme.palette.success.main} activeDot={{ r: 8 }} name="Invested Amount" />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
+                  <Typography variant="body2" color="text.secondary">No sufficient data for monthly investment trend.</Typography>
+                </Box>
               )}
             </Paper>
           </Grid>
         </Grid>
       )}
 
-      {selectedTab === 2 && (
+
+      {selectedTab === 1 && (
         <Paper elevation={3} sx={{ p: 3, bgcolor: theme.palette.background.paper, borderRadius: 2 }}>
+
+
+          {/* Average Transaction Metrics - Now styled as a simple Paper block, matching PortfolioCharts */}
+          <Grid item xs={12} md={6}>
+            <Paper elevation={3} sx={{ p: 3, bgcolor: theme.palette.background.paper, borderRadius: 2, height: '100%' }}>
+              <Typography variant="h6" gutterBottom sx={{ color: 'white', fontWeight: 600 }}>
+                Average Transaction Metrics
+              </Typography>
+              <Box display="flex" flexDirection="column" gap={2}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Total Transactions:</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: theme.palette.text.primary }}>
+                    {totalTransactions}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Total Invested Amount:</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: theme.palette.text.primary }}>
+                    {formatCurrency(totalAmountInvested)}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Average investment amount per transaction:</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: theme.palette.text.primary }}>
+                    {totalTransactions > 0 ? formatCurrency(totalAmountInvested / totalTransactions) : formatCurrency(0)}
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          </Grid>
+
           <Typography variant="h6" gutterBottom sx={{ color: theme.palette.text.primary }}>
-            Todas las Transacciones
+            All Transactions
           </Typography>
           <TableContainer sx={{ maxHeight: 600 }}>
             <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 'bold', color: theme.palette.text.primary, bgcolor: theme.palette.background.paper }}>Fecha</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: theme.palette.text.primary, bgcolor: theme.palette.background.paper }}>Plataforma</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold', color: theme.palette.text.primary, bgcolor: theme.palette.background.paper }}>Poder de Compra</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold', color: theme.palette.text.primary, bgcolor: theme.palette.background.paper }}>BCCR Compra</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 'bold', color: theme.palette.text.primary, bgcolor: theme.palette.background.paper }}>Plat. Compra</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', color: theme.palette.text.primary, bgcolor: theme.palette.background.paper }}>Date</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', color: theme.palette.text.primary, bgcolor: theme.palette.background.paper }}>Ticker</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', color: theme.palette.text.primary, bgcolor: theme.palette.background.paper }}>Operation</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: theme.palette.text.primary, bgcolor: theme.palette.background.paper }}>Shares</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: theme.palette.text.primary, bgcolor: theme.palette.background.paper }}>Price</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: theme.palette.text.primary, bgcolor: theme.palette.background.paper }}>Total Invested</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: theme.palette.text.primary, bgcolor: theme.palette.background.paper }}>Fee</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {[...transactions].sort((a, b) => new Date(b.Date) - new Date(a.Date)).map((row, index) => (
                   <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                     <TableCell component="th" scope="row" sx={{ color: theme.palette.text.primary }}>{formatDate(row.Date)}</TableCell>
-                    <TableCell sx={{ color: theme.palette.text.secondary }}>{row.Platform || 'N/A'}</TableCell>
-                    <TableCell align="right" sx={{ color: theme.palette.text.primary }}>{formatCurrency(row.Buying_Power)}</TableCell>
-                    <TableCell align="right" sx={{ color: theme.palette.text.primary }}>{safeNum(row.BCCR_Compra).toFixed(2) || 'N/A'}</TableCell>
-                    <TableCell align="right" sx={{ color: theme.palette.text.primary }}>{safeNum(row.Plaform_Compra).toFixed(2) || 'N/A'}</TableCell>
+                    <TableCell sx={{ color: theme.palette.text.secondary }}>{row.Ticker || 'N/A'}</TableCell>
+                    <TableCell sx={{ color: theme.palette.text.secondary }}>{row.Ops || 'N/A'}</TableCell>
+                    <TableCell align="right" sx={{ color: theme.palette.text.primary }}>{safeNum(row.Shares).toFixed(3)}</TableCell>
+                    <TableCell align="right" sx={{ color: theme.palette.text.primary }}>{formatCurrency(row.Price)}</TableCell>
+                    <TableCell align="right" sx={{ color: theme.palette.text.primary }}>{formatCurrency(row.Total_Invested)}</TableCell>
+                    <TableCell align="right" sx={{ color: theme.palette.text.primary }}>{safeNum(row.Fee).toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
