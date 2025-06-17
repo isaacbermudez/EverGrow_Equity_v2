@@ -18,7 +18,7 @@ import Sidebar from './components/Sidebar';
 import HomeContent from './components/HomeContent';
 import NewsSection from './components/NewsSection';
 import FinancialsSection from './components/FinancialsSection';
-import FileUpload from './components/FileUpload';
+import TransactionsSection from './components/TransactionsSection';
 import WealthSection from './components/WealthSection';
 import ChatWidget from './components/ChatWidget';
 
@@ -129,19 +129,44 @@ export default function App() {
     }
   });
 
+  // State for RAW transactions data (from backend's json.transactions)
+  const [transactions, setTransactions] = useState(() => {
+    try {
+      const storedTransactions = localStorage.getItem('portfolioTransactions');
+      return storedTransactions ? JSON.parse(storedTransactions) : [];
+    } catch (e) {
+      console.error("Failed to parse portfolioTransactions from localStorage", e);
+      return [];
+    }
+  });
+
+  // State for RAW deposits data (from backend's json.deposits)
+  const [deposits, setDeposits] = useState(() => {
+    try {
+      const storedDeposits = localStorage.getItem('portfolioDeposits');
+      return storedDeposits ? JSON.parse(storedDeposits) : [];
+    } catch (e) {
+      console.error("Failed to parse portfolioDeposits from localStorage", e);
+      return [];
+    }
+  });
+
+
   const [isDataLoaded, setIsDataLoaded] = useState(portfolioData.length > 0);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('portfolioAnalysisData', JSON.stringify(portfolioData));
     localStorage.setItem('uploadedPortfolioAssets', JSON.stringify(uploadedAssets));
+    localStorage.setItem('portfolioTransactions', JSON.stringify(transactions));
+    localStorage.setItem('portfolioDeposits', JSON.stringify(deposits));
     setIsDataLoaded(portfolioData.length > 0);
   }, [portfolioData, uploadedAssets]);
 
 
   // IMPORTANT: handleAssets now expects the FULL data object parsed from the JSON file
-  const handleAssets = async (fullData) => { 
-    setIsLoading(true); 
+  const handleAssets = async (fullData) => {
+    setIsLoading(true);
 
     // Construct the payload as expected by the backend
     const payloadToSend = {
@@ -151,7 +176,7 @@ export default function App() {
     };
 
     // Update the local state with just the assets part, as it's used for display
-    setUploadedAssets(payloadToSend.Assets); 
+    setUploadedAssets(payloadToSend.Assets);
 
     try {
       const res = await fetch('/api/analyze-portfolio', {
@@ -164,12 +189,17 @@ export default function App() {
         throw new Error(json.error || 'Failed to analyze portfolio data.');
       }
       // Backend now returns 'asset_results'
-      setPortfolioData(json.asset_results || []); 
+      setPortfolioData(json.asset_results || []);
+      setTransactions(json.transactions || []);   // Backend returns RAW transactions
+      setDeposits(json.deposits || []);           // Backend returns RAW deposits
     } catch (e) {
       console.error("Error in handleAssets:", e);
       alert(e.message);
       setPortfolioData([]);
       setUploadedAssets([]);
+      setTransactions([]);
+      setDeposits([]);
+
     } finally {
       setIsLoading(false);
     }
@@ -178,25 +208,21 @@ export default function App() {
   const handleClearData = () => {
     localStorage.removeItem('portfolioAnalysisData');
     localStorage.removeItem('uploadedPortfolioAssets');
+    localStorage.removeItem('portfolioTransactions');
+    localStorage.removeItem('portfolioDeposits');
     setPortfolioData([]);
     setUploadedAssets([]);
+    setTransactions([]);
+    setDeposits([]);
     setIsDataLoaded(false);
   };
 
   const handleRefreshData = async () => {
     if (uploadedAssets.length > 0) {
-      // For refresh, we don't have the full original `fullData` including transactions/deposits.
-      // If transactions/deposits are static/not changing on refresh,
-      // you'll need to store the full `fullData` from the initial upload
-      // or fetch it again if it comes from an external source.
-      // For now, if only assets are refreshed, we can construct the payload with empty transactions/deposits.
-      // A more robust solution would be to store the full `fullData` in state or localStorage.
-
-      // Assuming uploadedAssets is just the assets array here, we need to wrap it.
       const currentFullDataForRefresh = {
         Assets: uploadedAssets,
-        Transactions: [], // Or load from state if stored
-        Deposits: []     // Or load from state if stored
+        Transactions: transactions,
+        Deposits: deposits
       };
       await handleAssets(currentFullDataForRefresh);
     } else {
@@ -211,12 +237,12 @@ export default function App() {
       <BrowserRouter>
         <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
           <Sidebar
-            drawerWidth={drawerWidth} 
+            drawerWidth={drawerWidth}
             isDataLoaded={isDataLoaded}
             onUploadAssets={handleAssets} // This prop needs to pass the full JSON object
             onClearData={handleClearData}
             onRefreshData={handleRefreshData}
-            isLoading={isLoading} 
+            isLoading={isLoading}
           />
 
           <Box
@@ -239,6 +265,10 @@ export default function App() {
               <Route
                 path="/financials"
                 element={<FinancialsSection portfolioData={portfolioData} />}
+              />
+              <Route
+                path="/transactions"
+                element={<TransactionsSection transactions={transactions} />}
               />
               <Route
                 path="/wealth"

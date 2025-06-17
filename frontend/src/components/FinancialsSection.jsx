@@ -77,10 +77,10 @@ const FinancialHealthScorecard = React.memo(({ metrics, theme }) => {
     return (
       <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3 }}>
         <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary, borderBottom: `1px solid ${theme.palette.divider}`, pb: 1, fontWeight: 'bold' }}>
-          Análisis de Salud Financiera
+          Financial Health Analysis
         </Typography>
         <Box sx={{ p: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 100 }}>
-          <Typography variant="body2" color="text.secondary">No hay suficientes datos para generar el cuadro de mando financiero.</Typography>
+          <Typography variant="body2" color="text.secondary">  Not enough data to generate the financial scorecard.</Typography>
         </Box>
       </Paper>
     );
@@ -121,7 +121,7 @@ const FinancialHealthScorecard = React.memo(({ metrics, theme }) => {
 
   const scorecardCategories = [
     {
-      title: '💰 Rentabilidad',
+      title: '💰 Profitability',
       indicators: [
         {
           label: 'Net Income (TTM)', key: 'ProfitMargin',
@@ -156,7 +156,7 @@ const FinancialHealthScorecard = React.memo(({ metrics, theme }) => {
       ]
     },
     {
-      title: '📈 Crecimiento',
+      title: '📈 Growth',
       indicators: [
         {
           label: 'Revenue (TTM)', key: 'RevenueTTM',
@@ -170,7 +170,7 @@ const FinancialHealthScorecard = React.memo(({ metrics, theme }) => {
       ]
     },
     {
-      title: '📊 Valuación',
+      title: '📊 Valuation',
       indicators: [
         {
           label: 'P/E Ratio', key: 'PERatio',
@@ -193,7 +193,7 @@ const FinancialHealthScorecard = React.memo(({ metrics, theme }) => {
       ]
     },
     {
-      title: '🧮 Solidez Financiera (Deuda y Liquidez)',
+      title: '🧮 Financial Strength (Debt and Liquidity)',
       indicators: [
         { label: 'Net Debt / EBITDA', key: 'NetDebtEBITDA', target: '< 3x', currentVal: '-', compliance: { status: 'N/A', icon: '-', color: grey[500] } },
         {
@@ -211,7 +211,7 @@ const FinancialHealthScorecard = React.memo(({ metrics, theme }) => {
       ]
     },
     {
-      title: '💸 Dividendos',
+      title: '💸 Dividends',
       indicators: [
         {
           label: 'Dividend Yield', key: 'DividendYield',
@@ -253,10 +253,10 @@ const FinancialHealthScorecard = React.memo(({ metrics, theme }) => {
                 <Table size="small">
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold', borderBottom: `1px solid ${theme.palette.divider}` }}>Indicador</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', borderBottom: `1px solid ${theme.palette.divider}` }}>Actual</TableCell>
-                      <TableCell sx={{ fontWeight: 'bold', borderBottom: `1px solid ${theme.palette.divider}` }}>Meta / Esperado</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 'bold', borderBottom: `1px solid ${theme.palette.divider}` }}>Cumple</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', borderBottom: `1px solid ${theme.palette.divider}` }}>Indicator</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', borderBottom: `1px solid ${theme.palette.divider}` }}>Current</TableCell>
+                      <TableCell sx={{ fontWeight: 'bold', borderBottom: `1px solid ${theme.palette.divider}` }}>Target / Expected</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 'bold', borderBottom: `1px solid ${theme.palette.divider}` }}>Complies</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -306,23 +306,22 @@ const OtherFinancialDetailsTable = React.memo(({ metrics, theme }) => {
 
   const groupedMetrics = [
     {
-      title: 'Información General de la Compañía',
-      keys: ['ipo', 'phone', 'SharesOutstanding', 'Description', 'Address', 'FiscalYearEnd', 'LatestQuarter'],
+      title: 'General Company Info',
       display: [
-        { key: 'ipo', label: 'Fecha de IPO', format: (val) => val },
-        { key: 'phone', label: 'Teléfono', format: (val) => val },
-        { key: 'SharesOutstanding', label: 'Acciones en Circulación', format: (val) => formatLargeNumber(val, false) },
-        { key: 'FiscalYearEnd', label: 'Fin Año Fiscal', format: (val) => val },
-        { key: 'LatestQuarter', label: 'Último Trimestre', format: (val) => val },
-        { key: 'Description', label: 'Descripción', format: (val) => val === "None" ? "-" : val },
-        { key: 'Address', label: 'Dirección', format: (val) => val },
+        { key: 'ipo', label: 'IPO Date', format: (val) => val },
+        { key: 'phone', label: 'Phone', format: (val) => val },
+        { key: 'SharesOutstanding', label: 'Shares Outstanding', format: (val) => formatLargeNumber(val, false) },
+        { key: 'FiscalYearEnd', label: 'Fiscal Year End', format: (val) => val },
+        { key: 'LatestQuarter', label: 'Latest Quarter', format: (val) => val },
+        { key: 'Description', label: 'Description', format: (val) => val === "None" ? "-" : val },
+        { key: 'Address', label: 'Address', format: (val) => val },
       ]
     },
     {
       title: 'Rendimiento del Precio',
       keys: ['52WeekHigh', '52WeekLow', '52WeekHighDate', '52WeekLowDate', '200DayMovingAverage', '50DayMovingAverage',
-             'monthToDatePriceReturnDaily', 'yearToDatePriceReturnDaily', '5DayPriceReturnDaily', '13WeekPriceReturnDaily',
-             '26WeekPriceReturnDaily', 'beta'],
+        'monthToDatePriceReturnDaily', 'yearToDatePriceReturnDaily', '5DayPriceReturnDaily', '13WeekPriceReturnDaily',
+        '26WeekPriceReturnDaily', 'beta'],
       display: [
         { key: '52WeekHigh', label: 'Máximo 52 Semanas', format: (val) => formatLargeNumber(val, true) },
         { key: '52WeekLow', label: 'Mínimo 52 Semanas', format: (val) => formatLargeNumber(val, true) },
@@ -341,8 +340,8 @@ const OtherFinancialDetailsTable = React.memo(({ metrics, theme }) => {
     {
       title: 'Otros Ratios',
       keys: ['PriceToSalesRatioTTM', 'EPS', 'DilutedEPSTTM', 'RevenuePerShareTTM', 'GrossProfitTTM', 'grossMarginTTM',
-             'OperatingMarginTTM', 'EBITDA', 'EVToEBITDA', 'EVToRevenue', 'QuarterlyEarningsGrowthYOY',
-             'QuarterlyRevenueGrowthYOY', 'currentRatioAnnual', 'BookValue'],
+        'OperatingMarginTTM', 'EBITDA', 'EVToEBITDA', 'EVToRevenue', 'QuarterlyEarningsGrowthYOY',
+        'QuarterlyRevenueGrowthYOY', 'currentRatioAnnual', 'BookValue'],
       display: [
         { key: 'PriceToSalesRatioTTM', label: 'Ratio P/Ventas (TTM)', format: (val) => safeNum(val).toFixed(2) },
         { key: 'EPS', label: 'EPS (TTM)', format: (val) => formatLargeNumber(val, true) },
@@ -375,14 +374,14 @@ const OtherFinancialDetailsTable = React.memo(({ metrics, theme }) => {
     group.display.some(metric => {
       // Check if the metric key is NOT in scorecardKeys and has a valid value
       return !scorecardKeys.includes(metric.key) &&
-             (metrics?.[metric.key] !== undefined && metrics?.[metric.key] !== null && metrics?.[metric.key] !== "None" && metrics?.[metric.key] !== "-");
+        (metrics?.[metric.key] !== undefined && metrics?.[metric.key] !== null && metrics?.[metric.key] !== "None" && metrics?.[metric.key] !== "-");
     })
   );
 
   if (!hasRelevantMetrics) {
     return (
       <Box sx={{ p: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 100 }}>
-        <Typography variant="body2" color="text.secondary">No hay otros detalles financieros disponibles para mostrar.</Typography>
+        <Typography variant="body2" color="text.secondary">  No other financial details available to display.</Typography>
       </Box>
     );
   }
@@ -922,7 +921,7 @@ export default function FinancialsSection({ portfolioData = [] }) {
           {/* Other Financial Details Table (now grouped) */}
           <Paper elevation={3} sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 3 }}>
             <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary, borderBottom: `1px solid ${theme.palette.divider}`, pb: 1, fontWeight: 'bold' }}>
-              Otros Detalles Financieros
+                Other Financial Details 
             </Typography>
             <OtherFinancialDetailsTable metrics={financialMetrics} theme={theme} />
           </Paper>
