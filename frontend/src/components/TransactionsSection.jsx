@@ -118,13 +118,12 @@ export default function TransactionsSection({ transactions = [] }) {
           mb: 4
         }}
       >
-        <Repeat size={24} color="#f9a825" style={{ marginRight: 10 }} /> Transaction Summary and Analysis
+        <Repeat size={24} color="#f9a825" style={{ marginRight: 10 }} /> Transactions Analysis
       </Typography>
 
       {/* Tabs for different transaction views */}
       <Paper elevation={3} sx={{ bgcolor: theme.palette.background.paper, borderRadius: 2, mb: 4 }}>
         <Tabs value={selectedTab} onChange={handleTabChange} centered indicatorColor="primary" textColor="primary">
-
           <Tab label="Monthly Trend" />
           <Tab label="Transaction Details" />
         </Tabs>
