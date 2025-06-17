@@ -1,4 +1,3 @@
-# backend/app.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests, time, os
@@ -7,67 +6,67 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
-app = Flask(__name__)
+app = Flask(__name__) # Corrected __name__ here
 CORS(app)
 
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "YOUR_FINNHUB_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "YOUR_OPENROUTER_API_KEY_HERE")
-ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "YOUR_ALPHA_VANTAGE_API_KEY") # New API Key
+ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "YOUR_ALPHA_VANTAGE_API_KEY")
 
 DEEPDIVE_SYSTEM_PROMPT = """
 Actúa como DeepDive Stocks, un analista de empresas para inversión. Tu tarea es realizar un análisis profesional, exhaustivo y estratégico en español para inversores avanzados. Usa navegación web si está disponible. Evalúa modelo de negocio, noticias recientes, directiva, sector, resiliencia, posición en el mercado, si la empresa es Blue Chip o Multibagger, explicación de variación reciente del precio y el valor intrínseco estimado. Usa tablas con esta estructura exacta para los siguientes bloques:
 
 💰 Rentabilidad
-| Indicador    | Meta / Esperado     | Cumple |
-|--------------|---------------------|--------|
-| Net Income   | Estable o creciente |        |
-| Net Margin   | > 15%               |        |
-| ROE          | > 15%               |        |
-| ROA          | > 15%               |        |
-| ROIC         | > 20%               |        |
+| Indicador | Meta / Esperado | Cumple |
+|---|---|---|
+| Net Income | Estable o creciente | |
+| Net Margin | > 15% | |
+| ROE | > 15% | |
+| ROA | > 15% | |
+| ROIC | > 20% | |
 
 📈 Crecimiento
-| Indicador         | Meta / Esperado     | Cumple |
-|-------------------|---------------------|--------|
-| Revenue (Ingresos) | Estable o creciente |        |
-| EPS Growth (5 años) | Positivo            |        |
-| Sales Growth (5 años) | > 10%             |        |
-| Long-Term EPS Growth | Positivo          |        |
+| Indicador | Meta / Esperado | Cumple |
+|---|---|---|
+| Revenue (Ingresos) | Estable o creciente | |
+| EPS Growth (5 años) | Positivo | |
+| Sales Growth (5 años) | > 10% | |
+| Long-Term EPS Growth | Positivo | |
 
 📊 Valuación
-| Indicador  | Meta / Esperado | Cumple |
-|------------|-----------------|--------|
-| P/E Ratio  | < 20 (o < 25)   |        |
-| PEG Ratio  | < 1             |        |
-| P/B Ratio  | < 2             |        |
+| Indicador | Meta / Esperado | Cumple |
+|---|---|---|
+| P/E Ratio | < 20 (o < 25) | |
+| PEG Ratio | < 1 | |
+| P/B Ratio | < 2 | |
 
 🧮 Solidez Financiera (Deuda y Liquidez)
-| Indicador       | Meta / Esperado | Cumple |
-|------------------|-----------------|--------|
-| Net Debt / EBITDA | < 3x           |        |
-| Debt/Equity      | < 1             |        |
-| Quick Ratio      | > 1             |        |
+| Indicador | Meta / Esperado | Cumple |
+|---|---|---|
+| Net Debt / EBITDA | < 3x | |
+| Debt/Equity | < 1 | |
+| Quick Ratio | > 1 | |
 
 💸 Dividendos
-| Indicador      | Meta / Esperado | Cumple |
-|----------------|-----------------|--------|
-| Dividend Yield | > 0% (si aplica) |        |
-| Payout Ratio   | < 60%           |        |
+| Indicador | Meta / Esperado | Cumple |
+|---|---|---|
+| Dividend Yield | > 0% (si aplica) | |
+| Payout Ratio | < 60% | |
 
 Luego asigna un color de semáforo (Verde, Amarillo o Rojo) con justificación clara. Sugiere el perfil de inversor ideal (crecimiento, valor, dividendos, conservador o agresivo) y tipo de inversión (largo/corto plazo). Si hay más de una empresa, haz una comparativa y concluye cuál es más atractiva. Incluye resumen del desempeño en 5 años. Finaliza con 'Fuentes y Fecha de Consulta' con hipervínculos. No uses datos ficticios ni des recomendaciones explícitas. Sé claro, directo y profesional.
 """
 
 print(f"FINNHUB_API_KEY loaded: {FINNHUB_API_KEY}")
 print(f"OPENROUTER_API_KEY loaded: {'*****' if OPENROUTER_API_KEY else 'NOT_SET'}")
-print(f"ALPHA_VANTAGE_API_KEY loaded: {'*****' if ALPHA_VANTAGE_API_KEY else 'NOT_SET'}") # New print
+print(f"ALPHA_VANTAGE_API_KEY loaded: {'*****' if ALPHA_VANTAGE_API_KEY else 'NOT_SET'}")
 
 RATE_LIMIT = 60
 CACHE_TTL_QUOTE = 60
 CACHE_TTL_NEWS = 300
 MARKET_STATUS_CACHE_TTL = 300
 CACHE_TTL_COMPANY_PROFILE = 86400
-CACHE_TTL_BASIC_FINANCIALS = 3600 # Still used for Alpha Vantage data now
-CACHE_TTL_ALPHA_VANTAGE_FINANCIALS = 86400 # Alpha Vantage fundamental data is less frequent, cache for 24 hours
+CACHE_TTL_BASIC_FINANCIALS = 3600
+CACHE_TTL_ALPHA_VANTAGE_FINANCIALS = 86400
 CACHE_TTL_CHAT = 3600
 
 request_timestamps = []
@@ -75,12 +74,11 @@ quote_cache = {}
 market_status_cache = {}
 news_cache = {}
 company_profile_cache = {}
-basic_financials_cache = {} # This will now store Alpha Vantage data
+basic_financials_cache = {}
 chat_cache = {}
 
-# Alpha Vantage specific rate limit tracking
 alpha_vantage_timestamps = []
-ALPHA_VANTAGE_RATE_LIMIT = 5 # 5 calls per minute for free tier
+ALPHA_VANTAGE_RATE_LIMIT = 5
 
 def check_global_rate_limit():
     now = time.time()
@@ -105,7 +103,7 @@ def get_quote(symbol):
         if now - ts < CACHE_TTL_QUOTE:
             return data
 
-    check_global_rate_limit() # Use global rate limit for Finnhub quotes
+    check_global_rate_limit()
 
     url = f"https://finnhub.io/api/v1/quote?symbol={symbol}&token={FINNHUB_API_KEY}"
     resp = requests.get(url)
@@ -166,7 +164,7 @@ def analyze_portfolio():
         pl_pct        = (pl / ci * 100) if ci else None
 
         results.append({
-            "symbol": sym,
+            "symbol": sym, # Keeping 'symbol' with a lowercase 's' as requested
             "holdings": qty,
             "CI": ci,
             "currentPrice": current,
@@ -177,12 +175,11 @@ def analyze_portfolio():
             "category": category
         })
     
-    # Return the processed asset results. Acknowledge receipt of other data.
-    # The frontend can use 'asset_results' for display and can ignore 'transactions_received' and 'deposits_received' for now.
+    # Return the processed asset results, and raw transactions/deposits data
     return jsonify({
         "asset_results": results,
-        "transactions_received": len(transactions),
-        "deposits_received": len(deposits)
+        "transactions": transactions, # Changed to return raw transactions data
+        "deposits": deposits         # Changed to return raw deposits data
     })
 
 @app.route("/api/market-status", methods=["GET"])
@@ -196,7 +193,7 @@ def get_market_status():
             return jsonify(data)
 
     try:
-        check_global_rate_limit() # Use global rate limit for Finnhub
+        check_global_rate_limit()
 
         url = f"https://finnhub.io/api/v1/market/status?exchange={exchange}&token={FINNHUB_API_KEY}"
         resp = requests.get(url)
@@ -239,7 +236,7 @@ def get_company_news():
             return jsonify(data)
 
     try:
-        check_global_rate_limit() # Use global rate limit for Finnhub
+        check_global_rate_limit()
 
         url = f"https://finnhub.io/api/v1/company-news?symbol={symbol}&from={from_date}&to={to_date}&token={FINNHUB_API_KEY}"
         resp = requests.get(url)
@@ -284,16 +281,11 @@ def get_fundamentals_from_backend(symbol):
     except Exception as e:
         return {"error": str(e)}
 
-# Replaced get_basic_financials_from_backend with Alpha Vantage logic
 def get_alpha_vantage_financial_data(symbol, function_type):
-    """
-    Fetches fundamental financial data from Alpha Vantage.
-    function_type can be 'INCOME_STATEMENT', 'BALANCE_SHEET', 'CASH_FLOW', 'OVERVIEW'.
-    """
     if not ALPHA_VANTAGE_API_KEY or ALPHA_VANTAGE_API_KEY == "YOUR_ALPHA_VANTAGE_API_KEY":
         return {"error": "ALPHA_VANTAGE_API_KEY is not set correctly in your environment variables."}
 
-    check_alpha_vantage_rate_limit() # Use Alpha Vantage specific rate limit
+    check_alpha_vantage_rate_limit()
 
     url = f"https://www.alphavantage.co/query?function={function_type}&symbol={symbol}&apikey={ALPHA_VANTAGE_API_KEY}"
     response_text = ""
@@ -304,13 +296,11 @@ def get_alpha_vantage_financial_data(symbol, function_type):
 
         data = resp.json()
 
-        # Alpha Vantage often returns {"Information": "..."} for rate limits or invalid keys
         if "Information" in data and "rate limit" in data["Information"].lower():
             return {"error": f"Alpha Vantage Rate Limit Exceeded: {data['Information']}"}
         if "Error Message" in data:
             return {"error": f"Alpha Vantage API Error for {function_type} - {symbol}: {data['Error Message']}"}
         if not data or not any(key in data for key in ["annualReports", "quarterlyReports", "Symbol", "AssetType"]):
-            # Check for expected keys, 'Symbol' and 'AssetType' for OVERVIEW, reports for financials
             return {"error": f"No {function_type.replace('_', ' ').lower()} data found for symbol: {symbol}. Raw response: {response_text}"}
 
         return data
@@ -340,7 +330,7 @@ def get_company_profile():
             return jsonify(data)
 
     try:
-        check_global_rate_limit() # Use global rate limit for Finnhub
+        check_global_rate_limit()
         url = f"https://finnhub.io/api/v1/stock/profile2?symbol={symbol}&token={FINNHUB_API_KEY}"
         resp = requests.get(url)
         resp.raise_for_status()
@@ -362,7 +352,7 @@ def get_stock_metrics_api():
         return jsonify({"error": "Symbol is required."}), 400
 
     try:
-        check_global_rate_limit() # Use global rate limit for Finnhub
+        check_global_rate_limit()
         data = get_fundamentals_from_backend(symbol)
         if "error" in data:
             return jsonify(data), 500
@@ -375,18 +365,14 @@ def get_stock_metrics_api():
         print(f"Error in get_stock_metrics_api for {symbol}: {e}")
         return jsonify({"error": f"Failed to fetch fundamental metrics for {symbol}: {e}"}), 500
 
-# Updated Endpoint for Basic Financials to use Alpha Vantage
 @app.route("/api/basic-financials", methods=["GET"])
 def get_basic_financials_api():
     symbol = request.args.get("symbol")
-    # metricType for Alpha Vantage will map to different functions:
-    # 'overview', 'incomeStatement', 'balanceSheet', 'cashFlow'
-    metric_type = request.args.get("metricType", "overview") # Default to 'overview'
+    metric_type = request.args.get("metricType", "overview")
 
     if not symbol:
         return jsonify({"error": "Symbol is required."}), 400
 
-    # Map request metric_type to Alpha Vantage FUNCTION
     alpha_vantage_function = None
     if metric_type.lower() == 'overview':
         alpha_vantage_function = 'OVERVIEW'
@@ -411,23 +397,21 @@ def get_basic_financials_api():
         data = get_alpha_vantage_financial_data(symbol, alpha_vantage_function)
 
         if "error" in data:
-            # Alpha Vantage API errors often contain "Note: ..." or "Error Message"
             if "Rate Limit Exceeded" in data["error"]:
-                return jsonify(data), 429 # Too Many Requests
+                return jsonify(data), 429
             elif "invalid API key" in data["error"].lower() or "not a valid" in data["error"].lower():
-                return jsonify(data), 401 # Unauthorized
+                return jsonify(data), 401
             elif "symbol" in data["error"].lower() and ("invalid" in data["error"].lower() or "not found" in data["error"].lower()):
-                return jsonify(data), 404 # Not Found
+                return jsonify(data), 404
             else:
-                return jsonify(data), 500 # Generic server error for unhandled helper errors
+                return jsonify(data), 500
 
-        # Alpha Vantage returns an empty object {} or a message if no data is found for the symbol
         if not data:
             return jsonify({"error": f"No data returned from Alpha Vantage for {symbol} ({metric_type})."}), 404
 
         basic_financials_cache[cache_key] = (now, data)
         return jsonify(data)
-    except RuntimeError as e: # Catch local rate limit from check_alpha_vantage_rate_limit
+    except RuntimeError as e:
         return jsonify({"error": str(e)}), 429
     except Exception as e:
         print(f"Error in get_basic_financials_api for {symbol} ({metric_type}): {e}")
@@ -485,7 +469,7 @@ def chat_with_gpt():
                 "type": "function",
                 "function": {
                     "name": "get_fundamentals",
-                    "description": "Obtiene métricas fundamentales de una empresa (desde Finnhub).", # Updated description
+                    "description": "Obtiene métricas fundamentales de una empresa (desde Finnhub).",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -499,7 +483,7 @@ def chat_with_gpt():
                 "type": "function",
                 "function": {
                     "name": "get_basic_financials",
-                    "description": "Obtiene datos financieros básicos de una empresa, incluyendo información general, estado de resultados, balance general o estado de flujo de efectivo (desde Alpha Vantage).", # Updated description
+                    "description": "Obtiene datos financieros básicos de una empresa, incluyendo información general, estado de resultados, balance general o estado de flujo de efectivo (desde Alpha Vantage).",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -554,7 +538,6 @@ def chat_with_gpt():
                     elif fn_name == "get_fundamentals":
                         result = get_fundamentals_from_backend(args["symbol"])
                     elif fn_name == "get_basic_financials":
-                        # Call Alpha Vantage helper function
                         result = get_alpha_vantage_financial_data(args["symbol"], args.get("metric_type", "OVERVIEW").upper())
                 except RuntimeError as e:
                     result = {"error": str(e)}
