@@ -4,8 +4,6 @@ import {
   Container,
   Typography,
   Box,
-  // AppBar, // Removed AppBar as its content is moving
-  // Toolbar, // Removed Toolbar as its content is moving
   CssBaseline,
   ThemeProvider,
   createTheme,
@@ -20,9 +18,9 @@ import Sidebar from './components/Sidebar';
 import HomeContent from './components/HomeContent';
 import NewsSection from './components/NewsSection';
 import FinancialsSection from './components/FinancialsSection';
-import FileUpload from './components/FileUpload'; // Still needed as it's passed to Sidebar
+import FileUpload from './components/FileUpload';
 import WealthSection from './components/WealthSection';
-import ChatWidget from './components/ChatWidget'; // <--- NEW: Import ChatWidget
+import ChatWidget from './components/ChatWidget';
 
 import { teal, blueGrey } from '@mui/material/colors';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -132,7 +130,7 @@ export default function App() {
   });
 
   const [isDataLoaded, setIsDataLoaded] = useState(portfolioData.length > 0);
-  const [isLoading, setIsLoading] = useState(false); // <--- NEW STATE: For refresh loading indicator
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('portfolioAnalysisData', JSON.stringify(portfolioData));
@@ -141,29 +139,39 @@ export default function App() {
   }, [portfolioData, uploadedAssets]);
 
 
-  const handleAssets = async (assets) => {
-    setIsLoading(true); // Set loading to true when starting to handle assets
-    setUploadedAssets(assets);
+  // IMPORTANT: handleAssets now expects the FULL data object parsed from the JSON file
+  const handleAssets = async (fullData) => { 
+    setIsLoading(true); 
+
+    // Construct the payload as expected by the backend
+    const payloadToSend = {
+      Assets: fullData.Assets || [],
+      Transactions: fullData.Transactions || [],
+      Deposits: fullData.Deposits || []
+    };
+
+    // Update the local state with just the assets part, as it's used for display
+    setUploadedAssets(payloadToSend.Assets); 
 
     try {
       const res = await fetch('/api/analyze-portfolio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(assets),
+        body: JSON.stringify(payloadToSend), // Stringify the FULL payload object
       });
       const json = await res.json();
       if (!res.ok) {
         throw new Error(json.error || 'Failed to analyze portfolio data.');
       }
-      setPortfolioData(json.results || []);
+      // Backend now returns 'asset_results'
+      setPortfolioData(json.asset_results || []); 
     } catch (e) {
       console.error("Error in handleAssets:", e);
-      alert(e.message); // In a real app, you'd show a more user-friendly error message
+      alert(e.message);
       setPortfolioData([]);
       setUploadedAssets([]);
-      // Do not re-throw if you want to handle the error gracefully here
     } finally {
-      setIsLoading(false); // Set loading to false once operation is complete (success or failure)
+      setIsLoading(false);
     }
   };
 
@@ -177,8 +185,20 @@ export default function App() {
 
   const handleRefreshData = async () => {
     if (uploadedAssets.length > 0) {
-      // Re-use handleAssets for refreshing as it contains the API call logic
-      await handleAssets(uploadedAssets);
+      // For refresh, we don't have the full original `fullData` including transactions/deposits.
+      // If transactions/deposits are static/not changing on refresh,
+      // you'll need to store the full `fullData` from the initial upload
+      // or fetch it again if it comes from an external source.
+      // For now, if only assets are refreshed, we can construct the payload with empty transactions/deposits.
+      // A more robust solution would be to store the full `fullData` in state or localStorage.
+
+      // Assuming uploadedAssets is just the assets array here, we need to wrap it.
+      const currentFullDataForRefresh = {
+        Assets: uploadedAssets,
+        Transactions: [], // Or load from state if stored
+        Deposits: []     // Or load from state if stored
+      };
+      await handleAssets(currentFullDataForRefresh);
     } else {
       alert("No previously uploaded data to refresh.");
     }
@@ -190,17 +210,13 @@ export default function App() {
       <CssBaseline />
       <BrowserRouter>
         <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-          {/* The AppBar that was here has been removed as its content is moving to Sidebar */}
-
           <Sidebar
-            drawerWidth={drawerWidth} // Pass drawerWidth for consistency
+            drawerWidth={drawerWidth} 
             isDataLoaded={isDataLoaded}
-            onUploadAssets={handleAssets}
+            onUploadAssets={handleAssets} // This prop needs to pass the full JSON object
             onClearData={handleClearData}
             onRefreshData={handleRefreshData}
-            isLoading={isLoading} // <--- Pass the new isLoading state here
-          // FileUploadComponent is not needed anymore since FileUpload is directly imported in Sidebar
-          // and the logic moved to App.jsx for data handling.
+            isLoading={isLoading} 
           />
 
           <Box

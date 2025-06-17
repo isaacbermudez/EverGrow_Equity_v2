@@ -1,3 +1,4 @@
+# backend/app.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests, time, os
@@ -115,26 +116,47 @@ def get_quote(symbol):
 
 @app.route("/api/analyze-portfolio", methods=["POST"])
 def analyze_portfolio():
-    assets = request.get_json()
+    # Expect the new top-level JSON structure
+    full_data = request.get_json()
+    
+    # Check if JSON data was successfully parsed
+    if full_data is None:
+        return jsonify({"error": "No JSON data received or invalid JSON format in request body. Ensure Content-Type is application/json."}), 400
+
+    if not isinstance(full_data, dict):
+        return jsonify({"error": "Invalid top-level JSON format. Expecting a dictionary with 'Assets', 'Transactions', 'Deposits'."}), 400
+
+    assets = full_data.get("Assets", [])
+    transactions = full_data.get("Transactions", [])
+    deposits = full_data.get("Deposits", [])
+
     if not isinstance(assets, list):
-        return jsonify({"error": "Invalid format. Expecting a list of asset objects."}), 400
+        return jsonify({"error": "Invalid 'Assets' format. The 'Assets' key must contain a list."}), 400
 
     results = []
     for item in assets:
-        sym = item.get("Symbol") or item.get("symbol")
-        ci  = item.get("CI")     or item.get("ci", 0)
+        # Prioritize "Symbol" then "Ticker" for stock symbol
+        sym = item.get("Symbol") or item.get("Ticker")
+        # Prioritize "CI" then "cost_basis" for cost incurred
+        ci  = item.get("CI")     or item.get("cost_basis", 0) 
+        # Prioritize "Holdings" then "holdings" for quantity
         qty = item.get("Holdings") or item.get("holdings", 0)
+        
+        # Default to "N/A" if Sector or Category are not found
         sector = item.get("Sector") or item.get("sector", "N/A")
         category = item.get("Category") or item.get("category", "N/A")
 
         if not sym:
+            print(f"Skipping asset due to missing symbol: {item}")
             continue
 
         try:
             q = get_quote(sym)
             current = q.get("c") or 0.0
         except RuntimeError as e:
-            return jsonify({"error": str(e)}), 429
+            # Log rate limit specific errors, but continue processing other assets
+            print(f"Rate limit hit for quote for {sym}: {e}")
+            current = 0.0 
         except Exception as e:
             print(f"Error fetching quote for {sym}: {e}")
             current = 0.0
@@ -154,7 +176,14 @@ def analyze_portfolio():
             "sector": sector,
             "category": category
         })
-    return jsonify({"results": results})
+    
+    # Return the processed asset results. Acknowledge receipt of other data.
+    # The frontend can use 'asset_results' for display and can ignore 'transactions_received' and 'deposits_received' for now.
+    return jsonify({
+        "asset_results": results,
+        "transactions_received": len(transactions),
+        "deposits_received": len(deposits)
+    })
 
 @app.route("/api/market-status", methods=["GET"])
 def get_market_status():

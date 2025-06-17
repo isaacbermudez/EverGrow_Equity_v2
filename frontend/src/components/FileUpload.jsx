@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { Button, Box, Alert, Paper, Typography, CircularProgress, Chip } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import { teal } from '@mui/material/colors'; // Import teal for consistent theming
+import { teal } from '@mui/material/colors';
 
 export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLoading }) {
   const [error, setError] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [internalIsLoading, setInternalIsLoading] = useState(false); // Internal loading state for file processing
+  const [internalIsLoading, setInternalIsLoading] = useState(false);
 
-  const isLoading = propIsLoading || internalIsLoading; // Combine external and internal loading
+  const isLoading = propIsLoading || internalIsLoading;
 
   const processFile = async (file) => {
     if (!file) return;
@@ -25,15 +25,28 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
 
     try {
       const text = await file.text();
-      const arr = JSON.parse(text);
-      if (!Array.isArray(arr)) throw new Error("Not an array");
+      const parsedData = JSON.parse(text); // Parse the JSON content
 
-      await onUpload(arr);
+      // --- IMPORTANT CHANGE HERE ---
+      // Instead of checking for Array, check if it's an object and contains expected keys
+      if (typeof parsedData !== 'object' || parsedData === null) {
+          throw new Error("Invalid JSON format. Expected a top-level object.");
+      }
+      if (!parsedData.Assets) {
+          // You can refine this check based on whether 'Assets' is strictly mandatory
+          // or if other top-level keys like 'Transactions'/'Deposits' are always expected.
+          console.warn("Uploaded JSON does not contain an 'Assets' key at the top level. Proceeding with potentially empty assets.");
+      }
+      // --- END IMPORTANT CHANGE ---
+
+      await onUpload(parsedData); // Pass the ENTIRE parsed object to onUpload
       setError(null);
     } catch (e) {
       console.error("File processing or upload error:", e);
-      setError("Error processing or uploading file. Please check format or try again.");
-      onUpload([]); // Call onUpload with empty array on error, important for App.jsx state management
+      setError(`Error processing or uploading file: ${e.message}. Please check format or try again.`);
+      // On error, send a default empty structure expected by App.jsx,
+      // rather than just an empty array.
+      onUpload({ Assets: [], Transactions: [], Deposits: [] }); 
     } finally {
       setInternalIsLoading(false);
     }
@@ -44,14 +57,13 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
     if (f) {
       await processFile(f);
     }
-    // Clear the input value so the same file can be selected again
     e.target.value = null;
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!isDataLoaded && !isLoading) { // Allow drag only if data isn't loaded and not currently loading
+    if (!isDataLoaded && !isLoading) {
       setIsDragOver(true);
     }
   };
@@ -67,7 +79,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
     e.stopPropagation();
     setIsDragOver(false);
 
-    if (isDataLoaded || isLoading) return; // Prevent drop if data is loaded or loading
+    if (isDataLoaded || isLoading) return;
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
@@ -99,19 +111,19 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           sx={{
-            p: 1.5, // Reduced padding for compact sidebar
+            p: 1.5,
             border: isDragOver ? '2px dashed #00C49F' : '2px dashed rgba(255,255,255,0.5)',
-            backgroundColor: isDragOver ? teal[800] : 'transparent', // Match sidebar background
+            backgroundColor: isDragOver ? teal[800] : 'transparent',
             textAlign: 'center',
             cursor: isLoading ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s ease-in-out',
-            color: 'white', // Ensure text color is white
+            color: 'white',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             gap: 1,
             '&:hover': {
-              backgroundColor: teal[800], // Darker hover for better feedback
+              backgroundColor: teal[800],
               borderColor: teal[500],
             },
           }}
@@ -139,15 +151,15 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
                   '&:hover': { backgroundColor: teal[500] },
                   color: 'white',
                   textTransform: 'none',
-                  fontSize: '0.75rem', // Smaller font size for sidebar button
-                  px: 1.5, // Smaller padding
+                  fontSize: '0.75rem',
+                  px: 1.5,
                   py: 0.5,
                 }}
               >
                 Upload JSON
                 <input
                   hidden
-                  id="file-input" // Add an ID to the input for programmatic click
+                  id="file-input"
                   type="file"
                   accept=".json"
                   onChange={handleFile}
