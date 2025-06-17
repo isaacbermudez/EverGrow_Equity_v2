@@ -17,6 +17,7 @@ import {
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import RepeatIcon from '@mui/icons-material/Repeat';
 // New imports for the moved functionality
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -26,18 +27,19 @@ import { NavLink } from 'react-router-dom';
 import { teal } from '@mui/material/colors';
 
 export default function Sidebar({
-    drawerWidth = 100,
-    isDataLoaded,
-    onUploadAssets,
-    onClearData,
-    onRefreshData,
-    isLoading
+  drawerWidth = 100,
+  isDataLoaded,
+  onUploadAssets,
+  onClearData,
+  onRefreshData,
+  isLoading
 }) {
   const navItems = [
     { text: 'Home', icon: <DashboardIcon sx={{ color: 'white' }} />, path: '/' },
     { text: 'News', icon: <NewspaperIcon sx={{ color: 'white' }} />, path: '/news' },
     { text: 'Financials', icon: <AccountBalanceIcon sx={{ color: 'white' }} />, path: '/financials' },
-   // { text: 'Wealth', icon: <FavoriteIcon sx={{ color: 'white' }} />, path: '/wealth' },
+    { text: 'Transactions', icon: <RepeatIcon sx={{ color: 'white' }} />, path: '/transactions' },
+    // { text: 'Wealth', icon: <FavoriteIcon sx={{ color: 'white' }} />, path: '/wealth' },
   ];
 
   return (
@@ -71,7 +73,7 @@ export default function Sidebar({
             p: 1
           }}
         >
-          "Mirad, y guardaos de toda avaricia;<br/>porque la vida del hombre no consiste en la abundancia de los bienes que posee."<br/>
+          "Mirad, y guardaos de toda avaricia;<br />porque la vida del hombre no consiste en la abundancia de los bienes que posee."<br />
           <span style={{ fontSize: '0.8rem', display: 'block', marginTop: '4px', fontStyle: 'italic' }}>
             — Lucas 12:15 (RV1960)
           </span>
@@ -119,36 +121,36 @@ export default function Sidebar({
 
         {isDataLoaded && (
           <Box sx={{ display: 'flex', justifyContent: 'space-around', width: '100%', mt: 0.5 }}>
-           <IconButton
-                onClick={onRefreshData}
-                disabled={isLoading} // Disable button when loading
-                sx={{
-                    color: 'white',
-                    '&:hover': { bgcolor: teal[700] },
-                    position: 'relative', // Needed for CircularProgress positioning
-                }}
+            <IconButton
+              onClick={onRefreshData}
+              disabled={isLoading} // Disable button when loading
+              sx={{
+                color: 'white',
+                '&:hover': { bgcolor: teal[700] },
+                position: 'relative', // Needed for CircularProgress positioning
+              }}
             >
-                {isLoading ? ( // If loading, show spinner
-                    <CircularProgress
-                        size={24} // Size of the spinner
-                        sx={{
-                            color: 'white',
-                            position: 'absolute', // Position over the icon
-                            top: '50%',
-                            left: '50%',
-                            marginTop: '-12px', // Half of size to center vertically
-                            marginLeft: '-12px', // Half of size to center horizontally
-                        }}
-                    />
-                ) : ( // If not loading, show refresh icon
-                    <RefreshIcon />
-                )}
-                {/* Conditionally render the "Refresh" text */}
-                {!isLoading && ( // Show text ONLY if not loading
-                    <Typography variant="caption" sx={{ ml: 0.5, color: 'white' }}>
-                        Refresh
-                    </Typography>
-                )}
+              {isLoading ? ( // If loading, show spinner
+                <CircularProgress
+                  size={24} // Size of the spinner
+                  sx={{
+                    color: 'white',
+                    position: 'absolute', // Position over the icon
+                    top: '50%',
+                    left: '50%',
+                    marginTop: '-12px', // Half of size to center vertically
+                    marginLeft: '-12px', // Half of size to center horizontally
+                  }}
+                />
+              ) : ( // If not loading, show refresh icon
+                <RefreshIcon />
+              )}
+              {/* Conditionally render the "Refresh" text */}
+              {!isLoading && ( // Show text ONLY if not loading
+                <Typography variant="caption" sx={{ ml: 0.5, color: 'white' }}>
+                  Refresh
+                </Typography>
+              )}
             </IconButton>
             <IconButton onClick={onClearData} sx={{ color: 'white', '&:hover': { bgcolor: teal[700] } }}>
               <ClearIcon />

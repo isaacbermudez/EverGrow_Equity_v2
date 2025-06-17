@@ -576,7 +576,7 @@ export default function NewsSection({ portfolioData = [] }) {
 
       {portfolioData.length === 0 && !loading ? (
         <Alert severity="info">
-          Please upload your portfolio assets to see relevant news and portfolio insights.
+          Please upload your portfolio assets to see relevant news.
         </Alert>
       ) : (
         <Grid container spacing={3}>
