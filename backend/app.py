@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
-app = Flask(__name__) # Corrected __name__ here
+app = Flask(__name__)
 CORS(app)
 
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "YOUR_FINNHUB_API_KEY")
@@ -63,7 +63,7 @@ print(f"ALPHA_VANTAGE_API_KEY loaded: {'*****' if ALPHA_VANTAGE_API_KEY else 'NO
 RATE_LIMIT = 60
 CACHE_TTL_QUOTE = 60
 CACHE_TTL_NEWS = 300
-MARKET_STATUS_CACHE_TTL = 300
+MARKET_HOLIDAY_CACHE_TTL = 86400 # Cache for 24 hours for market holidays
 CACHE_TTL_COMPANY_PROFILE = 86400
 CACHE_TTL_BASIC_FINANCIALS = 3600
 CACHE_TTL_ALPHA_VANTAGE_FINANCIALS = 86400
@@ -71,7 +71,7 @@ CACHE_TTL_CHAT = 3600
 
 request_timestamps = []
 quote_cache = {}
-market_status_cache = {}
+market_holiday_cache = {}
 news_cache = {}
 company_profile_cache = {}
 basic_financials_cache = {}
@@ -182,39 +182,71 @@ def analyze_portfolio():
         "deposits": deposits         # Changed to return raw deposits data
     })
 
-@app.route("/api/market-status", methods=["GET"])
-def get_market_status():
+# API ENDPOINT for Market Holidays (retained)
+@app.route("/api/market-holidays", methods=["GET"])
+def get_market_holidays():
     exchange = request.args.get("exchange", "US")
     now = time.time()
 
-    if exchange in market_status_cache:
-        ts, data = market_status_cache[exchange]
-        if now - ts < MARKET_STATUS_CACHE_TTL:
-            return jsonify(data)
+    if exchange in market_holiday_cache:
+        ts, data = market_holiday_cache[exchange]
+        return jsonify(data)
 
     try:
         check_global_rate_limit()
 
-        url = f"https://finnhub.io/api/v1/market/status?exchange={exchange}&token={FINNHUB_API_KEY}"
+        url = f"https://finnhub.io/api/v1/stock/market-holiday?exchange={exchange}&token={FINNHUB_API_KEY}"
         resp = requests.get(url)
         resp.raise_for_status()
 
         response_text = resp.text
-        data = resp.json()
-        market_status_cache[exchange] = (now, data)
-        return jsonify(data)
+        
+        raw_data = resp.json()
+        
+        data = raw_data.get('data') 
+
+        if not isinstance(data, list):
+            print(f"ERROR: Finnhub Market Holiday 'data' key returned unexpected data type: {type(data)}. Content: {data}")
+            return jsonify({"error": f"Finnhub Market Holiday 'data' key returned unexpected data format. Please check API key permissions for this endpoint or ensure the Finnhub API is responding correctly. Raw: {response_text[:200]}..."}), 500
+
+        # Filter out past holidays and limit to a few upcoming ones
+        today_date = datetime.now().date()
+        one_month_from_now = today_date + timedelta(days=30)
+        
+        upcoming_holidays = []
+        for i, holiday in enumerate(data):
+            if not isinstance(holiday, dict):
+                print(f"Warning: Unexpected item type in holidays list at index {i}: {type(holiday)}. Content: {holiday}")
+                continue
+
+            holiday_date_str = holiday.get('atDate')
+            if holiday_date_str:
+                try:
+                    holiday_date = datetime.strptime(holiday_date_str, '%Y-%m-%d').date()
+                    
+                    if holiday_date >= today_date and holiday_date <= one_month_from_now:
+                        upcoming_holidays.append(holiday)
+                except ValueError:
+                    print(f"Warning: Could not parse holiday date: {holiday_date_str} for holiday {holiday.get('eventName', 'N/A')}")
+        
+        # Sort upcoming holidays by date
+        upcoming_holidays.sort(key=lambda x: datetime.strptime(x['atDate'], '%Y-%m-%d').date())
+        
+        market_holiday_cache[exchange] = (now, upcoming_holidays)
+        return jsonify(upcoming_holidays)
     except RuntimeError as e:
-        print(f"Rate limit exceeded for Finnhub API: {e}")
+        print(f"Rate limit exceeded for Finnhub Market Holiday API: {e}")
         return jsonify({"error": str(e)}), 429
     except json.JSONDecodeError as e:
-        print(f"JSON Decode Error from Finnhub Market Status: {e}. Raw response: '{response_text}'")
-        return jsonify({"error": f"Failed to parse Finnhub response as JSON. Error: {e}"}), 500
+        print(f"JSON Decode Error from Finnhub Market Holiday: {e}. Raw response: '{response_text}'")
+        return jsonify({"error": f"Failed to parse Finnhub response as JSON. Error: {e}. Raw: {response_text[:200]}..."}), 500
     except requests.exceptions.RequestException as e:
-        print(f"Request Exception to Finnhub Market Status: {e}")
-        return jsonify({"error": f"Failed to connect to Finnhub API: {e}"}), 500
+        print(f"Request Exception to Finnhub Market Holiday: {e}")
+        return jsonify({"error": f"Failed to connect to Finnhub Market Holiday API: {e}"}), 500
     except Exception as e:
-        print(f"An unexpected error occurred in get_market_status: {e}")
+        print(f"CRITICAL ERROR in get_market_holidays: {e}", exc_info=True)
         return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
+
 
 @app.route("/api/company-news", methods=["GET"])
 def get_company_news():
@@ -572,7 +604,7 @@ def chat_with_gpt():
 if __name__ == "__main__":
     if not OPENROUTER_API_KEY or OPENROUTER_API_KEY == "YOUR_OPENROUTER_API_KEY_HERE":
         print("WARNING: OPENROUTER_API_KEY is not set or is default. AI chat features may fail.")
-    if not FINNHUB_API_KEY or FINNHUB_API_KEY == "YOUR_API_KEY":
+    if not FINNHUB_API_KEY or FINNHUB_API_KEY == "YOUR_FINNHUB_API_KEY":
         print("WARNING: FINNHUB_API_KEY is not set or is default. Stock data features may not work.")
     if not ALPHA_VANTAGE_API_KEY or ALPHA_VANTAGE_API_KEY == "YOUR_ALPHA_VANTAGE_API_KEY":
         print("WARNING: ALPHA_VANTAGE_API_KEY is not set or is default. Alpha Vantage features may not work.")
