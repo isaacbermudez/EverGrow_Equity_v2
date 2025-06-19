@@ -569,7 +569,11 @@ export default function FinancialsSection({ portfolioData = [] }) {
 
   // Get unique symbols from portfolioData for Autocomplete options
   const portfolioSymbols = useMemo(() => {
-    return Array.from(new Set(portfolioData.map(asset => asset.symbol).filter(Boolean)));
+    return Array.from(new Set(
+      portfolioData
+        .filter(asset => asset.category !== 'ETF' && asset.symbol) // Filter out ETFs and ensure symbol exists
+        .map(asset => asset.symbol)
+    ));
   }, [portfolioData]);
 
   // Function to save data to local storage
@@ -921,7 +925,7 @@ export default function FinancialsSection({ portfolioData = [] }) {
           {/* Other Financial Details Table (now grouped) */}
           <Paper elevation={3} sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 3 }}>
             <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary, borderBottom: `1px solid ${theme.palette.divider}`, pb: 1, fontWeight: 'bold' }}>
-                Other Financial Details 
+              Other Financial Details
             </Typography>
             <OtherFinancialDetailsTable metrics={financialMetrics} theme={theme} />
           </Paper>

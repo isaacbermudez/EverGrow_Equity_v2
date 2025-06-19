@@ -59,7 +59,7 @@ const formatCurrency = (amount) => {
 
 // Loading skeleton for winners/losers cards
 const WinnersLosersLoadingSkeleton = () => (
-  <Paper elevation={3} sx={{ p: 3, mb: 4, bgcolor: 'background.paper', borderRadius: 2 }}>
+  <Paper elevation={3} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
     <Skeleton variant="text" width="50%" height={40} sx={{ mx: 'auto', mb: 2 }} />
     <Grid container spacing={3}>
       {[0, 1].map((index) => (
@@ -119,64 +119,241 @@ const WinnersLosersSection = React.memo(({ portfolioData, loading }) => {
 
   const renderAssetList = (assets, isWinners) => {
     const color = isWinners ? green[400] : red[400];
-    const bgColor = isWinners ? 'rgba(0,196,159,0.05)' : 'rgba(255,99,132,0.05)';
     const borderColor = isWinners ? green[700] : red[700];
     const hoverColor = isWinners ? 'rgba(0,196,159,0.1)' : 'rgba(255,99,132,0.1)';
     const Icon = isWinners ? TrendingUpIcon : TrendingDownIcon;
 
     return (
-      <Paper sx={{
-        p: 2,
-        bgcolor: bgColor,
-        border: `1px solid ${borderColor}`,
-        minHeight: '200px',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
-          <Icon sx={{ color, mr: 1 }} />
-          <Typography variant="h6" sx={{ color }}>
-            {isWinners ? 'Top Winners' : 'Top Losers'}
-          </Typography>
+      <Paper
+        sx={{
+          p: 3,
+          border: `2px solid ${borderColor}`,
+          borderRadius: 3,
+          minHeight: '220px',
+          display: 'flex',
+          flexDirection: 'column',
+          background: (theme) => `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+          boxShadow: (theme) => theme.shadows[6],
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '4px',
+            backgroundColor: color,
+            borderRadius: '12px 12px 0 0'
+          },
+          transition: 'all 0.3s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-2px)',
+            boxShadow: (theme) => theme.shadows[8]
+          }
+        }}
+      >
+        {/* Enhanced Header */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            mb: 2,
+            pb: 2,
+            borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
+            position: 'relative'
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              backgroundColor: color + '15',
+              px: 2,
+              py: 1,
+              borderRadius: 2,
+              border: `1px solid ${color}30`
+            }}
+          >
+            <Icon
+              sx={{
+                color,
+                mr: 1.5,
+                fontSize: '1.5rem',
+                filter: `drop-shadow(0 1px 3px ${color}40)`
+              }}
+            />
+            <Typography
+              variant="h6"
+              sx={{
+                color,
+                fontWeight: 700,
+                fontSize: '1.1rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}
+            >
+              {isWinners ? 'Top Winners' : 'Top Losers'}
+            </Typography>
+          </Box>
         </Box>
-        <List dense sx={{ flexGrow: 1, overflowY: 'auto' }}>
+
+        {/* Enhanced List */}
+        <List
+          dense
+          sx={{
+            flexGrow: 1,
+            overflowY: 'auto',
+            '&::-webkit-scrollbar': {
+              width: '6px'
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: (theme) => theme.palette.background.default,
+              borderRadius: '3px'
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: color,
+              borderRadius: '3px',
+              opacity: 0.7
+            }
+          }}
+        >
           {assets.length > 0 ? (
             assets.map((asset, index) => (
               <ListItemButton
                 key={`${asset.symbol}-${isWinners ? 'winner' : 'loser'}-${index}`}
                 onClick={() => handleSymbolClick(asset.symbol)}
                 sx={{
-                  borderRadius: 1,
-                  mb: 0.5,
+                  borderRadius: 2,
+                  mb: 1,
+                  p: 1.5,
+                  border: (theme) => `1px solid ${theme.palette.divider}`,
+                  backgroundColor: (theme) => theme.palette.background.paper,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: '4px',
+                    backgroundColor: color,
+                    opacity: 0.7
+                  },
                   '&:hover': {
                     bgcolor: hoverColor,
+                    transform: 'translateX(4px)',
+                    boxShadow: (theme) => theme.shadows[2],
+                    '&::before': {
+                      opacity: 1,
+                      width: '6px'
+                    }
                   },
+                  transition: 'all 0.2s ease-in-out'
                 }}
               >
                 <ListItemText
                   primary={
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Typography variant="body1" sx={{ color: 'text.primary', fontWeight: 'bold' }}>
-                        {asset.symbol}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color, fontWeight: 'bold' }}>
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      sx={{ pl: 1 }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            backgroundColor: color,
+                            mr: 1.5,
+                            boxShadow: `0 0 8px ${color}60`
+                          }}
+                        />
+                        <Typography
+                          variant="body1"
+                          sx={{
+                            color: 'text.primary',
+                            fontWeight: 600,
+                            fontSize: '0.95rem'
+                          }}
+                        >
+                          {asset.symbol}
+                        </Typography>
+                      </Box>
+                      <Box
+                        sx={{
+                          backgroundColor: color + '20',
+                          color: color,
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: 1.5,
+                          fontWeight: 700,
+                          fontSize: '0.85rem',
+                          fontFamily: 'monospace',
+                          border: `1px solid ${color}40`,
+                          minWidth: '80px',
+                          textAlign: 'center'
+                        }}
+                      >
                         {isWinners ? '+' : ''}{formatCurrency(asset.calculatedProfitLoss)}
-                      </Typography>
+                      </Box>
                     </Box>
                   }
                 />
               </ListItemButton>
             ))
           ) : (
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-              minHeight: '120px'
-            }}>
-              <Typography variant="body2" color="text.secondary">
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+                minHeight: '140px',
+                textAlign: 'center'
+              }}
+            >
+              <Box
+                sx={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: '50%',
+                  backgroundColor: (theme) => theme.palette.action.selected,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mb: 2,
+                  opacity: 0.7
+                }}
+              >
+                <Icon
+                  sx={{
+                    fontSize: '2rem',
+                    color: theme.palette.text.disabled
+                  }}
+                />
+              </Box>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  fontWeight: 500,
+                  fontSize: '0.9rem'
+                }}
+              >
                 {isWinners ? 'No winners yet!' : 'No losers yet!'}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.disabled"
+                sx={{ mt: 0.5 }}
+              >
+                Start investing to see results
               </Typography>
             </Box>
           )}
@@ -186,7 +363,7 @@ const WinnersLosersSection = React.memo(({ portfolioData, loading }) => {
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 4, bgcolor: 'background.paper', borderRadius: 2 }}>
+    <Paper elevation={3} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           {renderAssetList(winners, true)}
@@ -267,7 +444,6 @@ const NewsItem = React.memo(({ news, index, isLast }) => (
               justifyContent: 'center',
               width: '100%',
               height: '60px',
-              bgcolor: 'background.paper',
               borderRadius: 1,
               mb: 1,
               border: '1px dashed',

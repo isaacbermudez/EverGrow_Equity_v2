@@ -155,7 +155,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
             <>
               <CloudUploadIcon sx={{ fontSize: 32, color: 'white' }} />
               <Typography variant="caption" sx={{ color: 'white' }}>
-                Drag & Drop JSON file here
+                Drag & Drop
               </Typography>
 
               <Button
@@ -172,7 +172,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
                   py: 0.5,
                 }}
               >
-                Or Click to Upload
+                Upload JSON
                 <input
                   hidden
                   id="file-input"
