@@ -62,7 +62,8 @@ print(f"ALPHA_VANTAGE_API_KEY loaded: {'*****' if ALPHA_VANTAGE_API_KEY else 'NO
 
 RATE_LIMIT = 60
 CACHE_TTL_QUOTE = 60
-CACHE_TTL_NEWS = 300
+CACHE_TTL_NEWS = 300 # This is now specific to company news
+CACHE_TTL_GENERAL_NEWS = 300 # New cache TTL for general market news
 MARKET_HOLIDAY_CACHE_TTL = 86400 # Cache for 24 hours for market holidays
 CACHE_TTL_COMPANY_PROFILE = 86400
 CACHE_TTL_BASIC_FINANCIALS = 3600
@@ -72,7 +73,8 @@ CACHE_TTL_CHAT = 3600
 request_timestamps = []
 quote_cache = {}
 market_holiday_cache = {}
-news_cache = {}
+news_cache = {} # This will now be for company news
+general_news_cache = {} # New cache for general market news
 company_profile_cache = {}
 basic_financials_cache = {}
 chat_cache = {}
@@ -182,7 +184,7 @@ def analyze_portfolio():
         "deposits": deposits         # Changed to return raw deposits data
     })
 
-# API ENDPOINT for Market Holidays (retained)
+# API ENDPOINT for Market Holidays
 @app.route("/api/market-holidays", methods=["GET"])
 def get_market_holidays():
     exchange = request.args.get("exchange", "US")
@@ -200,9 +202,7 @@ def get_market_holidays():
         resp.raise_for_status()
 
         response_text = resp.text
-        
         raw_data = resp.json()
-        
         data = raw_data.get('data') 
 
         if not isinstance(data, list):
@@ -247,50 +247,7 @@ def get_market_holidays():
         print(f"CRITICAL ERROR in get_market_holidays: {e}", exc_info=True)
         return jsonify({"error": f"An unexpected server error occurred: {e}"}), 500
 
-
-@app.route("/api/company-news", methods=["GET"])
-def get_company_news():
-    symbol = request.args.get("symbol")
-    today = datetime.now().strftime('%Y-%m-%d')
-    thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
-    from_date = request.args.get("from", thirty_days_ago)
-    to_date = request.args.get("to", today)
-
-    if not symbol:
-        return jsonify({"error": "Symbol is required."}), 400
-
-    cache_key = f"{symbol}-{from_date}-{to_date}"
-    now = time.time()
-
-    if cache_key in news_cache:
-        ts, data = news_cache[cache_key]
-        if now - ts < CACHE_TTL_NEWS:
-            return jsonify(data)
-
-    try:
-        check_global_rate_limit()
-
-        url = f"https://finnhub.io/api/v1/company-news?symbol={symbol}&from={from_date}&to={to_date}&token={FINNHUB_API_KEY}"
-        resp = requests.get(url)
-        resp.raise_for_status()
-
-        response_text = resp.text
-        data = resp.json()
-        news_cache[cache_key] = (now, data)
-        return jsonify(data)
-    except RuntimeError as e:
-        print(f"Rate limit exceeded for Finnhub News API: {e}")
-        return jsonify({"error": str(e)}), 429
-    except json.JSONDecodeError as e:
-        print(f"JSON Decode Error from Finnhub News API for {symbol}: {e}. Raw response: '{response_text}'")
-        return jsonify({"error": f"Failed to parse Finnhub news response for {symbol} as JSON. Error: {e}"}), 500
-    except requests.exceptions.RequestException as e:
-        print(f"Request Exception to Finnhub News API for {symbol}: {e}")
-        return jsonify({"error": f"Failed to connect to Finnhub News API for {symbol}: {e}"}), 500
-    except Exception as e:
-        print(f"An unexpected error occurred in get_company_news for {symbol}: {e}")
-        return jsonify({"error": f"An unexpected server error occurred for {symbol}: {e}"}), 500
-
+# Helper function for company-specific news (already exists, but clarified its purpose)
 def get_company_news_from_backend(symbol, from_date=None, to_date=None):
     try:
         today = datetime.now().strftime('%Y-%m-%d')
@@ -303,6 +260,81 @@ def get_company_news_from_backend(symbol, from_date=None, to_date=None):
         return resp.json()
     except Exception as e:
         return {"error": str(e)}
+
+# New helper function for general market news
+def get_general_news_from_backend(category="general"):
+    now = time.time()
+    cache_key = f"general_news_{category}"
+
+    if cache_key in general_news_cache:
+        ts, data = general_news_cache[cache_key]
+        if now - ts < CACHE_TTL_GENERAL_NEWS:
+            return data
+
+    try:
+        check_global_rate_limit()
+        url = f"https://finnhub.io/api/v1/news?category={category}&token={FINNHUB_API_KEY}"
+        resp = requests.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+        general_news_cache[cache_key] = (now, data)
+        return data
+    except RuntimeError as e:
+        # Rate limit specific error
+        return {"error": str(e)}
+    except json.JSONDecodeError as e:
+        return {"error": f"Failed to parse Finnhub general news response as JSON. Error: {e}. Raw: {resp.text[:200]}..."}
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Failed to connect to Finnhub general news API: {e}"}
+    except Exception as e:
+        return {"error": f"An unexpected server error occurred while fetching general news: {e}"}
+
+# API ENDPOINT for General Market News
+@app.route("/api/market-news", methods=["GET"])
+def get_market_news():
+    category = request.args.get("category", "general")
+    try:
+        data = get_general_news_from_backend(category)
+        if "error" in data:
+            if "Rate limit exceeded" in data["error"]:
+                return jsonify(data), 429
+            return jsonify(data), 500
+        return jsonify(data)
+    except Exception as e:
+        print(f"Error in get_market_news: {e}")
+        return jsonify({"error": f"An unexpected server error occurred for market news: {e}"}), 500
+
+@app.route("/api/company-news", methods=["GET"])
+def get_company_news_api(): # Renamed to avoid confusion with helper function
+    symbol = request.args.get("symbol")
+    today = datetime.now().strftime('%Y-%m-%d')
+    thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+    from_date = request.args.get("from", thirty_days_ago)
+    to_date = request.args.get("to", today)
+
+    if not symbol:
+        return jsonify({"error": "Symbol is required."}), 400
+
+    cache_key = f"company_news_{symbol}-{from_date}-{to_date}" # Updated cache key
+    now = time.time()
+
+    if cache_key in news_cache:
+        ts, data = news_cache[cache_key]
+        if now - ts < CACHE_TTL_NEWS:
+            return jsonify(data)
+
+    try:
+        data = get_company_news_from_backend(symbol, from_date, to_date)
+        if "error" in data:
+            if "Rate limit exceeded" in data["error"]:
+                return jsonify(data), 429
+            return jsonify(data), 500
+        news_cache[cache_key] = (now, data)
+        return jsonify(data)
+    except Exception as e:
+        print(f"An unexpected error occurred in get_company_news_api for {symbol}: {e}")
+        return jsonify({"error": f"An unexpected server error occurred for {symbol}: {e}"}), 500
+
 
 def get_fundamentals_from_backend(symbol):
     try:
@@ -497,6 +529,21 @@ def chat_with_gpt():
                     }
                 }
             },
+            # Removed the original get_company_news tool and added a new one for general market news
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_general_market_news",
+                    "description": "Obtiene noticias generales del mercado de valores por categoría. Categorías comunes incluyen 'general', 'forex', 'crypto', 'merger'. Por defecto es 'general'.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "category": { "type": "string", "description": "Categoría de noticias, por ejemplo: general, forex, crypto, merger." }
+                        },
+                        "required": []
+                    }
+                }
+            },
             {
                 "type": "function",
                 "function": {
@@ -567,6 +614,8 @@ def chat_with_gpt():
                         result = get_quote(args["symbol"])
                     elif fn_name == "get_company_news":
                         result = get_company_news_from_backend(args["symbol"], args.get("from_date"), args.get("to_date"))
+                    elif fn_name == "get_general_market_news": # Added new tool call handler
+                        result = get_general_news_from_backend(args.get("category", "general"))
                     elif fn_name == "get_fundamentals":
                         result = get_fundamentals_from_backend(args["symbol"])
                     elif fn_name == "get_basic_financials":

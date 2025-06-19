@@ -25,6 +25,7 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import { green, red } from '@mui/material/colors';
 
 const LOCAL_STORAGE_PORTFOLIO_NEWS_CACHE = 'portfolioNewsCache'; // Single key for all news
+const LOCAL_STORAGE_GENERAL_NEWS_CACHE = 'generalNewsCache'; // New cache key for general market news
 const NEWS_CACHE_DURATION_HOURS = 1; // Cache news for 1 hour
 
 
@@ -384,13 +385,15 @@ const NewsItem = React.memo(({ news, index, isLast }) => (
     <ListItem alignItems="flex-start" sx={{ mb: 1, px: 0 }}>
       <Box display="flex" flexDirection="column" width="100%">
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-          <Chip
-            label={news.symbol}
-            size="small"
-            variant="outlined"
-            sx={{ fontWeight: 'bold' }}
-          />
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          {news.symbol && ( // Only show chip if it's company-specific news
+            <Chip
+              label={news.symbol}
+              size="small"
+              variant="outlined"
+              sx={{ fontWeight: 'bold' }}
+            />
+          )}
+          <Typography variant="caption" sx={{ color: 'text.secondary', ml: news.symbol ? 0 : 'auto' }}>
             {new Date(news.datetime * 1000).toLocaleDateString()}
           </Typography>
         </Box>
@@ -501,7 +504,7 @@ const LatestNewsCard = React.memo(({ newsItems, loading }) => (
       </List>
     ) : (
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', py: 4 }}>
-        <img src="/no-data.svg" alt="No positions" style={{ maxWidth: 160, opacity: 0.5, marginBottom: 16 }} />
+        <img src="/no-data.svg" alt="No news" style={{ maxWidth: 160, opacity: 0.5, marginBottom: 16 }} />
         <Typography variant="body2" color="text.secondary">
           No news available for portfolio symbols.
         </Typography>
@@ -512,11 +515,57 @@ const LatestNewsCard = React.memo(({ newsItems, loading }) => (
 
 LatestNewsCard.displayName = 'LatestNewsCard';
 
+// Memoized General Market News Card component
+const GeneralMarketNewsCard = React.memo(({ newsItems, loading, error }) => (
+  <Box sx={{ p: 2, mb: 2 }}>
+    <Typography variant="h6" gutterBottom color="text.primary" sx={{ textAlign: 'center', fontWeight: 700 }}>
+      General Market News
+    </Typography>
+    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+    {loading ? (
+      <Box sx={{ flexGrow: 1 }}>
+        {[...Array(3)].map((_, index) => (
+          <Box key={index} sx={{ mb: 3 }}>
+            <Skeleton variant="text" width="100%" height={24} />
+            <Skeleton variant="rectangular" width="100%" height={60} sx={{ mt: 1 }} />
+          </Box>
+        ))}
+      </Box>
+    ) : newsItems.length > 0 ? (
+      <List sx={{ flexGrow: 1, overflowY: 'auto', px: 1 }}>
+        {newsItems.map((news, index) => (
+          <NewsItem
+            key={news.id || `general-news-${index}`} // Use NewsItem but it will adapt (no symbol chip)
+            news={news}
+            index={index}
+            isLast={index === newsItems.length - 1}
+          />
+        ))}
+      </List>
+    ) : (
+      <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', py: 4 }}>
+        <img src="/no-data.svg" alt="No general news" style={{ maxWidth: 160, opacity: 0.5, marginBottom: 16 }} />
+        <Typography variant="body2" color="text.secondary">
+          No general market news available.
+        </Typography>
+      </Box>
+    )}
+  </Box>
+));
+GeneralMarketNewsCard.displayName = 'GeneralMarketNewsCard';
+
+
 // Main NewsSection Component - Reinstated as default export
 export default function NewsSection({ portfolioData = [] }) {
   const [allLatestNews, setAllLatestNews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true); // For portfolio-specific news
+  const [error, setError] = useState(null); // For portfolio-specific news
+
+  // New states for General Market News
+  const [generalMarketNews, setGeneralMarketNews] = useState([]);
+  const [loadingGeneralNews, setLoadingGeneralNews] = useState(true);
+  const [generalNewsError, setGeneralNewsError] = useState(null);
+
 
   // Calculate winners and losers to pass to WinnersLosersSection and for news sorting
   const { winners, losers, winnerSymbols, loserSymbols } = useMemo(() => {
@@ -557,7 +606,7 @@ export default function NewsSection({ portfolioData = [] }) {
     )];
   }, [portfolioData]);
 
-  // --- LOCAL STORAGE HELPER FUNCTIONS ---
+  // --- LOCAL STORAGE HELPER FUNCTIONS (for portfolio news) ---
 
   // Loads the entire news cache object from local storage
   const loadPortfolioNewsCache = useCallback(() => {
@@ -598,7 +647,44 @@ export default function NewsSection({ portfolioData = [] }) {
     }
   }, []);
 
-  // --- END LOCAL STORAGE HELPER FUNCTIONS ---
+  // --- END LOCAL STORAGE HELPER FUNCTIONS (for portfolio news) ---
+
+  // --- LOCAL STORAGE HELPER FUNCTIONS (for general news) ---
+  const loadGeneralNewsCache = useCallback(() => {
+    try {
+      const storedData = localStorage.getItem(LOCAL_STORAGE_GENERAL_NEWS_CACHE);
+      if (storedData) {
+        const cache = JSON.parse(storedData);
+        const currentTime = Date.now();
+        const freshCache = {};
+        for (const category in cache) {
+          if (cache.hasOwnProperty(category)) {
+            const { timestamp, newsItems } = cache[category];
+            const ageHours = (currentTime - timestamp) / (1000 * 60 * 60);
+            if (ageHours < NEWS_CACHE_DURATION_HOURS) {
+              freshCache[category] = { timestamp, newsItems };
+            } else {
+              console.log(`General news for category ${category} in cache is stale.`);
+            }
+          }
+        }
+        return freshCache;
+      }
+    } catch (e) {
+      console.error("Error loading general news cache from local storage:", e);
+      localStorage.removeItem(LOCAL_STORAGE_GENERAL_NEWS_CACHE);
+    }
+    return {};
+  }, []);
+
+  const saveGeneralNewsCache = useCallback((cache) => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_GENERAL_NEWS_CACHE, JSON.stringify(cache));
+    } catch (e) {
+      console.error("Error saving general news cache to local storage:", e);
+    }
+  }, []);
+  // --- END LOCAL STORAGE HELPER FUNCTIONS (for general news) ---
 
 
   const fetchNewsForSymbolAPI = useCallback(async (symbol) => {
@@ -635,15 +721,14 @@ export default function NewsSection({ portfolioData = [] }) {
     }
   }, []);
 
+  // Effect for fetching PORTFOLIO-SPECIFIC news
   useEffect(() => {
-    const loadAndCacheNews = async () => {
+    const loadAndCachePortfolioNews = async () => {
       setLoading(true);
       setError(null);
 
       if (portfolioData.length === 0 || relevantSymbols.length === 0) {
-
-        localStorage.removeItem('portfolioNewsCache');
-
+        localStorage.removeItem(LOCAL_STORAGE_PORTFOLIO_NEWS_CACHE);
         setAllLatestNews([]);
         setLoading(false);
         savePortfolioNewsCache({}); // Clear news cache if no symbols
@@ -724,8 +809,65 @@ export default function NewsSection({ portfolioData = [] }) {
       setLoading(false);
     };
 
-    loadAndCacheNews();
+    loadAndCachePortfolioNews();
   }, [portfolioData, relevantSymbols, fetchNewsForSymbolAPI, loadPortfolioNewsCache, savePortfolioNewsCache, winnerSymbols, loserSymbols]);
+
+  // Effect for fetching GENERAL MARKET news
+  useEffect(() => {
+    const fetchGeneralNews = async () => {
+      setLoadingGeneralNews(true);
+      setGeneralNewsError(null);
+
+      const currentGeneralNewsCache = loadGeneralNewsCache();
+      const category = "general"; // Default category, can be made dynamic if needed
+
+      if (currentGeneralNewsCache[category]) {
+        setGeneralMarketNews(currentGeneralNewsCache[category].newsItems);
+        setLoadingGeneralNews(false);
+        return;
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      try {
+        const response = await fetch(`/api/market-news?category=${category}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        const json = await response.json();
+        if (!response.ok) {
+          throw new Error(json.error || `Failed to fetch general market news for category ${category}.`);
+        }
+
+        // Ensure news items have required properties
+        const validNews = json.filter(item => item.headline && item.datetime);
+        setGeneralMarketNews(validNews);
+
+        // Update cache
+        const updatedCache = { ...currentGeneralNewsCache, [category]: { timestamp: Date.now(), newsItems: validNews } };
+        saveGeneralNewsCache(updatedCache);
+
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          setGeneralNewsError(`Request timeout for general news.`);
+        } else {
+          setGeneralNewsError(`General market news unavailable: ${err.message || 'Unknown error'}`);
+        }
+        console.error("Error fetching general market news:", err);
+        setGeneralMarketNews([]);
+        saveGeneralNewsCache({}); // Clear cache on error for this category
+      } finally {
+        setLoadingGeneralNews(false);
+      }
+    };
+
+    fetchGeneralNews();
+    // Set a refresh interval for general news (e.g., every hour)
+    const intervalId = setInterval(fetchGeneralNews, NEWS_CACHE_DURATION_HOURS * 60 * 60 * 1000);
+    return () => clearInterval(intervalId); // Cleanup
+  }, [loadGeneralNewsCache, saveGeneralNewsCache]);
+
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4 }}>
@@ -748,22 +890,67 @@ export default function NewsSection({ portfolioData = [] }) {
           <Zap size={24} color="#f9a825" style={{ marginRight: 10 }} />  Market Insights
         </Typography>
       </Box>
-      {error && <Alert severity="warning" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {portfolioData.length === 0 && !loading ? (
-        <Alert severity="info">
-          Please upload your portfolio assets to see relevant news.
-        </Alert>
-      ) : (
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <WinnersLosersSection portfolioData={portfolioData} loading={loading} />
-          </Grid>
-          <Grid item xs={12}>
-            <LatestNewsCard newsItems={allLatestNews} loading={loading} />
-          </Grid>
-        </Grid>
-      )}
+      <Box>
+        {/* Winners/Losers Section - Full Width */}
+        <Box sx={{ mb: 3}}>
+          <WinnersLosersSection portfolioData={portfolioData} loading={loading} />
+        </Box>
+
+        {/* Two-Column News Layout */}
+        <Box sx={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 3,
+          '@media (max-width: 768px)': {
+            gridTemplateColumns: '1fr'
+          }
+        }}>
+
+          <Paper
+            elevation={3}
+            sx={{
+              p: 1,
+              borderRadius: 2,
+              background: (theme) => `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+              border: '1px solid rgba(0,0,0,0.1)',
+              boxShadow: (theme) => theme.shadows[6],
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: (theme) => theme.shadows[8]
+              }
+            }}
+          >
+            <LatestNewsCard
+              newsItems={allLatestNews}
+              loading={loading}
+            />
+          </Paper>
+          <Paper
+            elevation={3}
+            sx={{
+              p: 1,
+              borderRadius: 2,
+              background: (theme) => `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+              border: '1px solid rgba(0,0,0,0.1)',
+              boxShadow: (theme) => theme.shadows[6],
+              transition: 'all 0.3s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: (theme) => theme.shadows[8]
+              }
+            }}
+          >
+            <GeneralMarketNewsCard
+              newsItems={generalMarketNews}
+              loading={loadingGeneralNews}
+              error={generalNewsError}
+            />
+          </Paper>
+
+        </Box>
+      </Box>
     </Container>
   );
 }
