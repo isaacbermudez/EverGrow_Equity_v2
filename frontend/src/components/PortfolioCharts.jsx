@@ -227,10 +227,7 @@ export default function PortfolioCharts({ rows = [] }) {
       return (
         <Box sx={{ flex: 1, minWidth: 320, maxWidth: 600, p: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5 }}>
           <Box sx={{ textAlign: 'center', opacity: 0.5 }}>
-            <Typography variant="h6" sx={{ color: 'white', mb: 1 }}>No Data Available</Typography>
-            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-              Add some portfolio data to see charts
-            </Typography>
+             <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} /> 
           </Box>
         </Box>
       );

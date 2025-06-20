@@ -403,8 +403,7 @@ export default function TransactionsSection({ transactions = [] }) {
               </ResponsiveContainer>
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 400 }}>
-                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
-                <Typography variant="body2" color="text.secondary">No investment amount data by ticker matching current filters.</Typography>
+                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />                
               </Box>
             )}
           </Paper>
@@ -573,7 +572,6 @@ export default function TransactionsSection({ transactions = [] }) {
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 350 }}>
                 <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
-                <Typography variant="body2" color="text.secondary">No sufficient data for monthly transaction trend matching current filters.</Typography>
               </Box>
             )}
           </Paper>
@@ -750,8 +748,7 @@ export default function TransactionsSection({ transactions = [] }) {
               </ResponsiveContainer>
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 350 }}>
-                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
-                <Typography variant="body2" color="text.secondary">No sufficient data for monthly investment trend matching current filters.</Typography>
+                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />                
               </Box>
             )}
           </Paper>
@@ -1148,8 +1145,7 @@ export default function TransactionsSection({ transactions = [] }) {
             ) : (
               // This is the fallback for the entire table if transactions.length === 0 initially
               <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5 }}>
-                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
-                <Typography variant="body2" color="text.secondary">No transactions to display.</Typography>
+                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />                
               </Box>
             )}
           </Paper>
