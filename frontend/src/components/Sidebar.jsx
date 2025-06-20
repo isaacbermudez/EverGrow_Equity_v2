@@ -1,5 +1,5 @@
 // src/components/Sidebar.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Drawer,
   List,
@@ -14,7 +14,7 @@ import {
   IconButton,
   CircularProgress,
   Alert,
-  useTheme
+  useTheme,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
@@ -23,14 +23,23 @@ import RepeatIcon from '@mui/icons-material/Repeat';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ClearIcon from '@mui/icons-material/Clear';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
-import { teal } from '@mui/material/colors'; // Only keep teal since red/grey are not directly used here.
+import { teal } from '@mui/material/colors';
 import moment from 'moment-timezone';
 import { NavLink } from 'react-router-dom';
 import FileUpload from './FileUpload';
+import { DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 
-// Constants for frontend local storage caching (still useful for immediate client-side refreshes)
+// Constants for frontend local storage caching
 const MARKET_HOLIDAYS_CLIENT_CACHE_KEY = 'marketHolidaysClientCache';
-const CLIENT_CACHE_TTL_HOURS = 1; // Shorter client-side cache TTL, backend has longer Redis cache
+const CLIENT_CACHE_TTL_HOURS = 1;
+
+// Helper for safe number formatting
+const safeNum = (n) => (typeof n === 'number' || typeof n === 'string' && !isNaN(parseFloat(n)) ? parseFloat(n) : 0);
+
+// Helper to format currency
+const formatCurrency = (amount) => {
+  return `$${safeNum(amount).toFixed(2)}`;
+};
 
 export default function Sidebar({
   drawerWidth = 100,
@@ -38,7 +47,8 @@ export default function Sidebar({
   onUploadAssets,
   onClearData,
   onRefreshData,
-  isLoading
+  isLoading,
+  assets = []
 }) {
   const theme = useTheme();
 
@@ -47,46 +57,40 @@ export default function Sidebar({
   const [holidayError, setHolidayError] = useState(null);
 
   useEffect(() => {
-    const fetchAndFilterMarketHolidays = async () => { // Renamed for clarity
+    const fetchAndFilterMarketHolidays = async () => {
       setLoadingHolidays(true);
       setHolidayError(null);
 
       const now = moment();
       const oneMonthLater = moment().add(1, 'month');
 
-      // Helper function to filter and sort holidays
       const filterAndSortHolidays = (holidays) => {
         return (Array.isArray(holidays) ? holidays : [])
           .filter(holiday => {
             const holidayDate = moment(holiday.atDate);
-            // Keep holidays that are today or in the future AND within the next month
             return holidayDate.isSameOrAfter(now, 'day') && holidayDate.isSameOrBefore(oneMonthLater, 'day');
           })
           .sort((a, b) => moment(a.atDate).valueOf() - moment(b.atDate).valueOf());
       };
 
-      // 1. Try to load from CLIENT-SIDE localStorage first
       const cachedData = localStorage.getItem(MARKET_HOLIDAYS_CLIENT_CACHE_KEY);
       if (cachedData) {
         try {
           const { data, timestamp } = JSON.parse(cachedData);
           const cachedMoment = moment(timestamp);
 
-          // Check if client-side cache is fresh
           if (now.diff(cachedMoment, 'hours') < CLIENT_CACHE_TTL_HOURS) {
-            // Apply filtering and sorting to cached data
             const processedCachedHolidays = filterAndSortHolidays(data);
             setMarketHolidays(processedCachedHolidays);
             setLoadingHolidays(false);
-            return; // Exit as we've used cached data
+            return;
           }
         } catch (e) {
           console.warn("Error parsing or using client-side cached market holidays, fetching fresh data:", e);
-          localStorage.removeItem(MARKET_HOLIDAYS_CLIENT_CACHE_KEY); // Clear invalid cache
+          localStorage.removeItem(MARKET_HOLIDAYS_CLIENT_CACHE_KEY);
         }
       }
 
-      // 2. If no fresh client-side cache, fetch from BACKEND API
       try {
         const holidaysResponse = await fetch('/api/market-holidays?exchange=US');
         if (!holidaysResponse.ok) {
@@ -98,32 +102,49 @@ export default function Sidebar({
           throw new Error(`Market Holidays API error: ${holidaysData.error}`);
         }
 
-        // Apply filtering and sorting to fetched holidays
         const processedHolidays = filterAndSortHolidays(holidaysData);
         setMarketHolidays(processedHolidays);
 
-        // Store the new data in client-side localStorage with a timestamp
         localStorage.setItem(MARKET_HOLIDAYS_CLIENT_CACHE_KEY, JSON.stringify({
-          data: processedHolidays, // Store the processed data
+          data: processedHolidays,
           timestamp: now.toISOString()
         }));
 
       } catch (err) {
         console.error("Error fetching market holidays:", err);
         setHolidayError(`Market holidays unavailable: ${err.message}`);
-        setMarketHolidays([]); // Ensure holidays are empty array on error
+        setMarketHolidays([]);
       } finally {
         setLoadingHolidays(false);
       }
     };
 
-    fetchAndFilterMarketHolidays(); // Call the renamed function
-
-    // Set up a shorter interval for client-side re-fetch to ensure data is reasonably fresh
-    // The backend's Redis cache will handle the heavy lifting of API calls.
+    fetchAndFilterMarketHolidays();
     const intervalId = setInterval(fetchAndFilterMarketHolidays, CLIENT_CACHE_TTL_HOURS * 60 * 60 * 1000);
-    return () => clearInterval(intervalId); // Cleanup on unmount
-  }, []); // Empty dependency array means this runs once on mount and cleans up on unmount
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Memoize calculations for portfolio summary
+  const { totalValue, totalPL, totalPLPct } = useMemo(() => {
+    let currentTotalValue = 0;
+    let currentTotalPL = 0;
+    let totalCostBasis = 0;
+
+    assets.forEach(asset => {
+      currentTotalValue += safeNum(asset.marketValue);
+      currentTotalPL += safeNum(asset.profitLoss);
+      totalCostBasis += safeNum(asset.CI);
+    });
+
+    const currentTotalPLPct = (totalCostBasis ? (currentTotalPL / totalCostBasis * 100) : 0) || 0;
+
+    return {
+      totalValue: currentTotalValue,
+      totalPL: currentTotalPL,
+      totalPLPct: currentTotalPLPct
+    };
+  }, [assets]);
+
 
   const navItems = [
     { text: 'Home', icon: <DashboardIcon sx={{ color: 'white' }} />, path: '/' },
@@ -143,8 +164,8 @@ export default function Sidebar({
           bgcolor: teal[900],
           color: 'white',
           borderRight: '1px solid rgba(255,255,255,0.1)',
-          display: 'flex', // Enable flexbox for column layout
-          flexDirection: 'column', // Stack children vertically
+          display: 'flex',
+          flexDirection: 'column',
         },
       }}
       variant="permanent"
@@ -174,8 +195,8 @@ export default function Sidebar({
 
       <Divider sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} />
 
-      {/* Market Holidays Section (moved here) */}
-      <Box sx={{ p: 1, my: 1 }}> {/* Reduced padding/margin for sidebar integration */}
+      {/* Market Holidays Section */}
+      <Box sx={{ p: 1, my: 1 }}>
         {loadingHolidays ? (
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, py: 1 }}>
             <CircularProgress size={16} color="primary" sx={{ color: 'rgba(255,255,255,0.7)' }} />
@@ -190,13 +211,12 @@ export default function Sidebar({
             {marketHolidays.length > 0 ? (
               <Box>
                 <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600, display: 'block', textAlign: 'center', mb: 0.5 }}>
-                  Upcoming U.S. Market Holidays:
+                Market Holidays:
                 </Typography>
                 <List dense sx={{ p: 0 }}>
-                  {/* Slice to show only the first 3 holidays, as before */}
                   {marketHolidays.slice(0, 3).map((holiday, index) => (
                     <ListItem key={index} sx={{ p: 0, m: 0 }}>
-                      <ListItemIcon sx={{ minWidth: 24, color: 'white' }}> {/* Adjusted minWidth for smaller sidebar icons */}
+                      <ListItemIcon sx={{ minWidth: 24, color: 'white' }}>
                         <EventAvailableIcon fontSize="small" />
                       </ListItemIcon>
                       <ListItemText
@@ -224,6 +244,35 @@ export default function Sidebar({
 
       <Divider sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} />
 
+      {/* NEW: Compact Portfolio Summary Labels in Sidebar */}
+      {isDataLoaded && ( // Only show if data is loaded
+        <Box sx={{ p: 1, my: 1, width: '100%', boxSizing: 'border-box' }}>
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600, display: 'block', textAlign: 'center', mb: 0.5 }}> {/* Reduced mb */}
+            Portfolio Summary:
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}> {/* Reduced gap */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1 }}>
+              <DollarSign size={15} color={theme.palette.text.secondary} /> {/* Slightly smaller icon */}
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 500, lineHeight: 1, fontSize: '0.68rem' }}> {/* Explicit smaller font size */}
+                Total Value: <span style={{ fontWeight: 'bold', color: 'white', fontSize: '0.68rem' }}>{formatCurrency(totalValue)}</span> {/* Explicit smaller font size */}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1 }}>
+              {totalPL >= 0 ? <TrendingUp size={15} color={theme.palette.success.main} /> : <TrendingDown size={15} color={theme.palette.error.main} />} {/* Slightly smaller icon */}
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 500, lineHeight: 1, fontSize: '0.68rem' }}> {/* Explicit smaller font size */}
+                Total P/L: <span style={{ fontWeight: 'bold', color: totalPL >= 0 ? theme.palette.success.main : theme.palette.error.main, fontSize: '0.68rem' }}> {/* Explicit smaller font size */}
+                  {`${totalPL >= 0 ? '+' : ''}${formatCurrency(totalPL)}`}
+                </span>
+                <span style={{ color: totalPL >= 0 ? theme.palette.success.main : theme.palette.error.main, fontSize: '0.68rem' }}> {/* Explicit smaller font size */}
+                  {` (${safeNum(totalPLPct).toFixed(2)}%)`}
+                </span>
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+      )}
+
+      <Divider sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} />
 
       {/* Navigation List */}
       <List>

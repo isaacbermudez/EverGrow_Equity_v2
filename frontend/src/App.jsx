@@ -243,6 +243,7 @@ export default function App() {
             onClearData={handleClearData}
             onRefreshData={handleRefreshData}
             isLoading={isLoading}
+            assets={portfolioData}
           />
 
           <Box

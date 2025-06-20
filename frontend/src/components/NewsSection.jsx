@@ -504,10 +504,7 @@ const LatestNewsCard = React.memo(({ newsItems, loading }) => (
       </List>
     ) : (
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', py: 4 }}>
-        <img src="/no-data.svg" alt="No news" style={{ maxWidth: 160, opacity: 0.5, marginBottom: 16 }} />
-        <Typography variant="body2" color="text.secondary">
-          No news available for portfolio symbols.
-        </Typography>
+        <img src="/no-data.svg" alt="No news" style={{ maxWidth: 160, opacity: 0.5, marginBottom: 16 }} />      
       </Box>
     )}
   </Box>
