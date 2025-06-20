@@ -130,7 +130,6 @@ const WinnersLosersSection = React.memo(({ portfolioData, loading }) => {
           p: 3,
           border: `2px solid ${borderColor}`,
           borderRadius: 3,
-          minHeight: '220px',
           display: 'flex',
           flexDirection: 'column',
           background: (theme) => `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
@@ -143,7 +142,6 @@ const WinnersLosersSection = React.memo(({ portfolioData, loading }) => {
             top: 0,
             left: 0,
             right: 0,
-            height: '4px',
             backgroundColor: color,
             borderRadius: '12px 12px 0 0'
           },
@@ -181,7 +179,7 @@ const WinnersLosersSection = React.memo(({ portfolioData, loading }) => {
               sx={{
                 color,
                 mr: 1.5,
-                fontSize: '1.5rem',
+                fontSize: '1rem',
                 filter: `drop-shadow(0 1px 3px ${color}40)`
               }}
             />
@@ -190,9 +188,9 @@ const WinnersLosersSection = React.memo(({ portfolioData, loading }) => {
               sx={{
                 color,
                 fontWeight: 700,
-                fontSize: '1.1rem',
+                fontSize: '0.8rem',
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px'
+                letterSpacing: '0.1px'
               }}
             >
               {isWinners ? 'Top Winners' : 'Top Losers'}
@@ -226,82 +224,49 @@ const WinnersLosersSection = React.memo(({ portfolioData, loading }) => {
                 key={`${asset.symbol}-${isWinners ? 'winner' : 'loser'}-${index}`}
                 onClick={() => handleSymbolClick(asset.symbol)}
                 sx={{
-                  borderRadius: 2,
-                  mb: 1,
-                  p: 1.5,
-                  border: (theme) => `1px solid ${theme.palette.divider}`,
-                  backgroundColor: (theme) => theme.palette.background.paper,
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: '4px',
-                    backgroundColor: color,
-                    opacity: 0.7
-                  },
+                  borderRadius: 1,
+                  mr: 0.5,
+                  p: 0.75,
+                  border: 1,
+                  borderColor: 'divider',
+                  minWidth: 100,
+                  width: 'auto',
+                  display: 'inline-flex',
                   '&:hover': {
-                    bgcolor: hoverColor,
-                    transform: 'translateX(4px)',
-                    boxShadow: (theme) => theme.shadows[2],
-                    '&::before': {
-                      opacity: 1,
-                      width: '6px'
-                    }
+                    backgroundColor: 'action.hover',
+                    borderColor: color,
                   },
-                  transition: 'all 0.2s ease-in-out'
+                  transition: 'all 0.2s ease'
                 }}
               >
                 <ListItemText
                   primary={
-                    <Box
-                      display="flex"
-                      justifyContent="space-between"
-                      alignItems="center"
-                      sx={{ pl: 1 }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box display="flex" flexDirection="column" alignItems="center" gap={0.5}>
+                      <Box display="flex" alignItems="center" gap={0.5}>
                         <Box
                           sx={{
-                            width: 8,
-                            height: 8,
+                            width: 4,
+                            height: 4,
                             borderRadius: '50%',
                             backgroundColor: color,
-                            mr: 1.5,
-                            boxShadow: `0 0 8px ${color}60`
                           }}
                         />
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            color: 'text.primary',
-                            fontWeight: 600,
-                            fontSize: '0.95rem'
-                          }}
-                        >
+                        <Typography variant="body2" fontWeight={500}>
                           {asset.symbol}
                         </Typography>
                       </Box>
-                      <Box
+                      <Chip
+                        label={`${isWinners ? '+' : ''}${formatCurrency(asset.calculatedProfitLoss)}`}
+                        size="small"
                         sx={{
-                          backgroundColor: color + '20',
+                          backgroundColor: `${color}15`,
                           color: color,
-                          px: 1.5,
-                          py: 0.5,
-                          borderRadius: 1.5,
-                          fontWeight: 700,
-                          fontSize: '0.85rem',
-                          fontFamily: 'monospace',
-                          border: `1px solid ${color}40`,
-                          minWidth: '80px',
-                          textAlign: 'center'
+                          fontWeight: 500,
+                          fontSize: '0.75rem',
+                          height: 20,
+                          borderRadius: 0.5,
                         }}
-                      >
-                        {isWinners ? '+' : ''}{formatCurrency(asset.calculatedProfitLoss)}
-                      </Box>
+                      />
                     </Box>
                   }
                 />
@@ -364,14 +329,18 @@ const WinnersLosersSection = React.memo(({ portfolioData, loading }) => {
   };
 
   return (
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+    <Grid container spacing={1}>
+      <Grid item xs={12} sm={6}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
           {renderAssetList(winners, true)}
-        </Grid>
-        <Grid item xs={12} md={6}>
-          {renderAssetList(losers, false)}
-        </Grid>
+        </Box>
       </Grid>
+      <Grid item xs={12} sm={6}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+          {renderAssetList(losers, false)}
+        </Box>
+      </Grid>
+    </Grid>
   );
 });
 
@@ -502,7 +471,7 @@ const LatestNewsCard = React.memo(({ newsItems, loading }) => (
       </List>
     ) : (
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', py: 4 }}>
-        <img src="/no-data.svg" alt="No news" style={{ maxWidth: 160, opacity: 0.5, marginBottom: 16 }} />      
+        <img src="/no-data.svg" alt="No news" style={{ maxWidth: 160, opacity: 0.5, marginBottom: 16 }} />
       </Box>
     )}
   </Box>
@@ -888,7 +857,7 @@ export default function NewsSection({ portfolioData = [] }) {
 
       <Box>
         {/* Winners/Losers Section - Full Width */}
-        <Box sx={{ mb: 3}}>
+        <Box sx={{ mb: 3 }}>
           <WinnersLosersSection portfolioData={portfolioData} loading={loading} />
         </Box>
 

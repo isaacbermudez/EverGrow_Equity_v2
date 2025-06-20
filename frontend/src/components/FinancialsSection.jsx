@@ -573,7 +573,7 @@ export default function FinancialsSection({ portfolioData = [] }) {
       portfolioData
         .filter(asset => asset.category !== 'ETF' && asset.symbol) // Filter out ETFs and ensure symbol exists
         .map(asset => asset.symbol)
-    ));
+    )).sort();
   }, [portfolioData]);
 
   // Function to save data to local storage
