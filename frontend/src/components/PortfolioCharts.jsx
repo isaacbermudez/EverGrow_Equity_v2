@@ -184,7 +184,7 @@ export default function PortfolioCharts({ rows = [] }) {
   const theme = useTheme();
   const [categoryFilter, setCategoryFilter] = useState('SATELLITES');
   const [labelMode, setLabelMode] = useState('name');
-  const [showInnerLabels, setShowInnerLabels] = useState(false);
+  const [showInnerLabels, setShowInnerLabels] = useState(true);
   const [showOuterLabels, setShowOuterLabels] = useState(true);
   const [minPercentThreshold, setMinPercentThreshold] = useState(0);
 
@@ -227,7 +227,7 @@ export default function PortfolioCharts({ rows = [] }) {
       return (
         <Box sx={{ flex: 1, minWidth: 320, maxWidth: 600, p: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5 }}>
           <Box sx={{ textAlign: 'center', opacity: 0.5 }}>
-             <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} /> 
+            <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
           </Box>
         </Box>
       );
@@ -421,7 +421,7 @@ export default function PortfolioCharts({ rows = [] }) {
                 label={<Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>Outer Labels</Typography>}
               />
 
-              {/*  <FormControlLabel
+              <FormControlLabel
                 control={
                   <Switch
                     checked={showInnerLabels}
@@ -431,7 +431,7 @@ export default function PortfolioCharts({ rows = [] }) {
                   />
                 }
                 label={<Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>Inner Labels</Typography>}
-              />*/}
+              />
 
               {/* Threshold Selector */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -439,7 +439,21 @@ export default function PortfolioCharts({ rows = [] }) {
                   Min %:
                 </Typography>
                 <ButtonGroup size="small">
-                  {[3, 5, 10].map(threshold => (
+                  {/* New "All" button */}
+                  <Button
+                    onClick={() => setMinPercentThreshold(0)}
+                    variant={minPercentThreshold === 0 ? 'contained' : 'outlined'}
+                    sx={{
+                      minWidth: 35,
+                      color: minPercentThreshold === 0 ? 'white' : 'rgba(255,255,255,0.7)',
+                      borderColor: 'rgba(255,255,255,0.3)',
+                      backgroundColor: minPercentThreshold === 0 ? teal[600] : 'transparent',
+                      fontSize: '0.7rem'
+                    }}
+                  >
+                    All
+                  </Button>
+                  {[5, 10].map(threshold => (
                     <Button
                       key={threshold}
                       onClick={() => setMinPercentThreshold(threshold)}

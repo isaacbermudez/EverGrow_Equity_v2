@@ -247,23 +247,23 @@ export default function Sidebar({
       {/* NEW: Compact Portfolio Summary Labels in Sidebar */}
       {isDataLoaded && ( // Only show if data is loaded
         <Box sx={{ p: 1, my: 1, width: '100%', boxSizing: 'border-box' }}>
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600, display: 'block', textAlign: 'center', mb: 0.5 }}> {/* Reduced mb */}
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600, display: 'block', textAlign: 'center', mb: 0.5 }}>
             Portfolio Summary:
           </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}> {/* Reduced gap */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1 }}>
-              <DollarSign size={15} color={theme.palette.text.secondary} /> {/* Slightly smaller icon */}
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 500, lineHeight: 1, fontSize: '0.68rem' }}> {/* Explicit smaller font size */}
-                Total Value: <span style={{ fontWeight: 'bold', color: 'white', fontSize: '0.68rem' }}>{formatCurrency(totalValue)}</span> {/* Explicit smaller font size */}
+              <DollarSign size={15} color={theme.palette.text.secondary} />
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 500, lineHeight: 1, fontSize: '0.68rem' }}>
+                Total Value: <span style={{ fontWeight: 'bold', color: 'white', fontSize: '0.68rem' }}>{formatCurrency(totalValue)}</span>
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1 }}>
-              {totalPL >= 0 ? <TrendingUp size={15} color={theme.palette.success.main} /> : <TrendingDown size={15} color={theme.palette.error.main} />} {/* Slightly smaller icon */}
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 500, lineHeight: 1, fontSize: '0.68rem' }}> {/* Explicit smaller font size */}
-                Total P/L: <span style={{ fontWeight: 'bold', color: totalPL >= 0 ? theme.palette.success.main : theme.palette.error.main, fontSize: '0.68rem' }}> {/* Explicit smaller font size */}
+              {totalPL >= 0 ? <TrendingUp size={15} color={theme.palette.success.main} /> : <TrendingDown size={15} color={theme.palette.error.main} />}
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 500, lineHeight: 1, fontSize: '0.68rem' }}>
+                Total P/L: <span style={{ fontWeight: 'bold', color: totalPL >= 0 ? theme.palette.success.main : theme.palette.error.main, fontSize: '0.68rem' }}>
                   {`${totalPL >= 0 ? '+' : ''}${formatCurrency(totalPL)}`}
                 </span>
-                <span style={{ color: totalPL >= 0 ? theme.palette.success.main : theme.palette.error.main, fontSize: '0.68rem' }}> {/* Explicit smaller font size */}
+                <span style={{ color: totalPL >= 0 ? theme.palette.success.main : theme.palette.error.main, fontSize: '0.68rem' }}>
                   {` (${safeNum(totalPLPct).toFixed(2)}%)`}
                 </span>
               </Typography>
@@ -281,7 +281,7 @@ export default function Sidebar({
             <ListItemButton
               component={NavLink}
               to={item.path}
-              exact={item.path === '/'}
+              exact={String(item.path === '/')}
               sx={{
                 '&.active': {
                   bgcolor: teal[600],

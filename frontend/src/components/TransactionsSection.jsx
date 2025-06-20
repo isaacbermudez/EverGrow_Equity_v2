@@ -20,6 +20,8 @@ import {
   ToggleButton, // For operation filter
   ToggleButtonGroup, // For operation filter
   Chip, // For operation chip in table
+  ButtonGroup, // For threshold buttons
+  Button,      // For threshold buttons
 } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LabelList, Area } from 'recharts'; // Added LabelList, Area
 import { DollarSign, Repeat, ArrowUp, ArrowDown, Search } from 'lucide-react'; // Changed ArrowUpward to ArrowUp, ArrowDownward to ArrowDown
@@ -82,8 +84,6 @@ const SortableTableCell = ({ children, orderBy, orderDirection, property, onRequ
 
 
 export default function TransactionsSection({ transactions = [] }) {
-  // DEBUG LOG: What data is received by this component?
-  console.log("TransactionsSection: Received transactions prop:", transactions);
 
   const theme = useTheme();
   const [selectedTab, setSelectedTab] = useState(0);
@@ -96,6 +96,8 @@ export default function TransactionsSection({ transactions = [] }) {
   const [operationFilter, setOperationFilter] = useState('All'); // 'All', 'Buy', 'Sell'
   const [tickerFilter, setTickerFilter] = useState(''); // Text search for Ticker
 
+  // New state for minimum amount threshold for bar chart labels
+  const [minAmountThreshold, setMinAmountThreshold] = useState(0); // 0 means show all
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
@@ -116,6 +118,39 @@ export default function TransactionsSection({ transactions = [] }) {
 
   const handleTickerFilterChange = (event) => {
     setTickerFilter(event.target.value);
+  };
+
+  // Helper function to render bar chart labels with threshold logic (adjusted for horizontal)
+  const renderBarLabel = (props) => {
+    const { x, y, width, height, value } = props;
+    
+    // Define a minimum bar length (width for horizontal bars) for a label to be displayed
+    const MIN_BAR_LENGTH_FOR_LABEL = 40; // Adjust as needed
+
+    // Hide label if bar length is too small OR value is below the set threshold
+    if (width < MIN_BAR_LENGTH_FOR_LABEL || (minAmountThreshold > 0 && value < minAmountThreshold)) {
+      return null;
+    }
+
+    let displayValue;
+    if (value >= 1000000) displayValue = `$${(value / 1000000).toFixed(1)}M`;
+    else if (value >= 1000) displayValue = `$${(value / 1000).toFixed(0)}K`;
+    else displayValue = formatCurrency(value);
+
+    return (
+      <text
+        x={x + width + 5} // Position to the right of the bar
+        y={y + height / 2} // Vertically center with the bar
+        fill={theme.palette.text.primary}
+        textAnchor="start" // Align text to the start (left) of the anchor point
+        dominantBaseline="middle"
+        fontSize="9" // Smaller font size
+        fontWeight="700"
+        textShadow={`1px 1px 2px ${theme.palette.background.paper}`}
+      >
+        {displayValue}
+      </text>
+    );
   };
 
   // Memoized calculations for transaction summaries and filtered/sorted transactions
@@ -249,6 +284,57 @@ export default function TransactionsSection({ transactions = [] }) {
 
       {selectedTab === 0 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {/* Controls for Investment Amount by Ticker Chart */}
+          {tickerInvestmentSummary.length > 0 && (
+            <Box sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 2,
+              alignItems: 'center',
+              justifyContent: 'center', // Center the controls
+              p: 2,
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              borderRadius: 2,
+              border: '1px solid rgba(255,255,255,0.1)',
+              mb: 1 // Add margin below the controls
+            }}>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>
+                Min $:
+              </Typography>
+              <ButtonGroup size="small">
+                <Button
+                  onClick={() => setMinAmountThreshold(0)}
+                  variant={minAmountThreshold === 0 ? 'contained' : 'outlined'}
+                  sx={{
+                    minWidth: 35,
+                    color: minAmountThreshold === 0 ? 'white' : 'rgba(255,255,255,0.7)',
+                    borderColor: 'rgba(255,255,255,0.3)',
+                    backgroundColor: minAmountThreshold === 0 ? teal[600] : 'transparent',
+                    fontSize: '0.7rem'
+                  }}
+                >
+                  All
+                </Button>
+                {[200, 500, 5000].map(threshold => ( // Example thresholds
+                  <Button
+                    key={threshold}
+                    onClick={() => setMinAmountThreshold(threshold)}
+                    variant={minAmountThreshold === threshold ? 'contained' : 'outlined'}
+                    sx={{
+                      minWidth: 35,
+                      color: minAmountThreshold === threshold ? 'white' : 'rgba(255,255,255,0.7)',
+                      borderColor: 'rgba(255,255,255,0.3)',
+                      backgroundColor: minAmountThreshold === threshold ? teal[600] : 'transparent',
+                      fontSize: '0.7rem'
+                    }}
+                  >
+                    ${threshold / 1000}K
+                  </Button>
+                ))}
+              </ButtonGroup>
+            </Box>
+          )}
+
           <Paper
             elevation={3}
             sx={{
@@ -262,42 +348,21 @@ export default function TransactionsSection({ transactions = [] }) {
               Investment Amount by Ticker
             </Typography>
             {tickerInvestmentSummary.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={Math.max(300, tickerInvestmentSummary.length * 30)}> {/* Dynamic height */}
                 <BarChart
                   data={tickerInvestmentSummary}
-                  margin={{ top: 10, right: 10, left: 10, bottom: 60 }}
+                  layout="vertical" // Changed to vertical layout for horizontal bars
+                  margin={{ top: 10, right: 60, left: 80, bottom: 10 }} // Adjusted margins for horizontal layout
                 >
                   <CartesianGrid
                     strokeDasharray="2 4"
                     stroke={theme.palette.divider}
                     strokeOpacity={0.3}
-                    vertical={false}
+                    horizontal={false} // Only vertical grid lines for horizontal bars
                   />
 
-                  <XAxis
-                    dataKey="ticker"
-                    stroke={theme.palette.text.secondary}
-                    tick={{
-                      fontSize: 11,
-                      fill: theme.palette.text.secondary,
-                      fontWeight: 500
-                    }}
-                    tickLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 1.5
-                    }}
-                    axisLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 2
-                    }}
-                    angle={-45}
-                    textAnchor="end"
-                    interval={0}
-                    height={80}
-                    tickMargin={5}
-                  />
-
-                  <YAxis
+                  <XAxis // This is now the numerical axis for amount
+                    type="number"
                     stroke={theme.palette.text.secondary}
                     tick={{
                       fontSize: 12,
@@ -313,13 +378,34 @@ export default function TransactionsSection({ transactions = [] }) {
                       strokeWidth: 2
                     }}
                     tickMargin={20}
-                    width={80}
-                    domain={[0, 'dataMax + 1000']}
+                    width={80} // Adjust width for axis labels
+                    domain={[0, 'dataMax + 1000']} // Ensure labels fit on the max side
                     tickFormatter={(value) => {
                       if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
                       if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
                       return formatCurrency(value);
                     }}
+                  />
+
+                  <YAxis // This is now the categorical axis for tickers
+                    dataKey="ticker"
+                    type="category"
+                    stroke={theme.palette.text.secondary}
+                    tick={{
+                      fontSize: 11,
+                      fill: theme.palette.text.secondary,
+                      fontWeight: 500
+                    }}
+                    tickLine={{
+                      stroke: theme.palette.text.secondary,
+                      strokeWidth: 1.5
+                    }}
+                    axisLine={{
+                      stroke: theme.palette.text.secondary,
+                      strokeWidth: 2
+                    }}
+                    width={100} // Give more space for ticker labels
+                    tickMargin={5}
                   />
 
                   <Tooltip
@@ -368,35 +454,25 @@ export default function TransactionsSection({ transactions = [] }) {
                   <Bar
                     dataKey="amount"
                     name="Investment Amount"
-                    radius={[6, 6, 0, 0]}
-                    maxBarSize={50}
-                    fill="url(#investmentGradient)"
+                    radius={[0, 6, 6, 0]} // Rounded corners on the right side for horizontal bars
+                    barSize={20} // Adjust bar thickness
+                    fill="url(#horizontalInvestmentGradient)" // New horizontal gradient
                     stroke={theme.palette.primary.main}
                     strokeWidth={1}
                   >
                     <LabelList
                       dataKey="amount"
-                      position="top"
-                      formatter={(value) => {
-                        if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-                        if (value >= 10000) return `$${(value / 1000).toFixed(0)}K`;
-                        return formatCurrency(value);
-                      }}
-                      style={{
-                        fill: theme.palette.text.primary,
-                        fontSize: 10,
-                        fontWeight: 700,
-                        textShadow: `1px 1px 2px ${theme.palette.background.paper}`
-                      }}
-                      offset={20}
+                      position="right" // Position labels to the right of the bar
+                      content={renderBarLabel} // Use the custom content renderer
                     />
                   </Bar>
 
                   <defs>
-                    <linearGradient id="investmentGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={theme.palette.primary.main} stopOpacity={0.9} />
+                    {/* New horizontal gradient for bars */}
+                    <linearGradient id="horizontalInvestmentGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor={theme.palette.primary.dark} stopOpacity={0.8} />
                       <stop offset="50%" stopColor={theme.palette.primary.main} stopOpacity={0.7} />
-                      <stop offset="100%" stopColor={theme.palette.primary.dark} stopOpacity={0.8} />
+                      <stop offset="100%" stopColor={theme.palette.primary.main} stopOpacity={0.9} />
                     </linearGradient>
                   </defs>
                 </BarChart>
@@ -404,6 +480,7 @@ export default function TransactionsSection({ transactions = [] }) {
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 400 }}>
                 <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />                
+                <Typography variant="body2" color="text.secondary">No investment amount data by ticker matching current filters.</Typography>
               </Box>
             )}
           </Paper>
@@ -572,6 +649,7 @@ export default function TransactionsSection({ transactions = [] }) {
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 350 }}>
                 <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
+                <Typography variant="body2" color="text.secondary">No sufficient data for monthly transaction trend matching current filters.</Typography>
               </Box>
             )}
           </Paper>
@@ -749,6 +827,7 @@ export default function TransactionsSection({ transactions = [] }) {
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 350 }}>
                 <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />                
+                <Typography variant="body2" color="text.secondary">No sufficient data for monthly investment trend matching current filters.</Typography>
               </Box>
             )}
           </Paper>
@@ -806,6 +885,9 @@ export default function TransactionsSection({ transactions = [] }) {
               border: '1px solid rgba(255,255,255,0.12)',
             }}
           >
+            <Typography variant="h6" gutterBottom sx={{ color: theme.palette.text.primary, fontWeight: 600, mb: 2 }}>
+              All Transactions
+            </Typography>
             {transactions.length > 0 ? (
               <TableContainer
                 sx={{
@@ -1145,7 +1227,8 @@ export default function TransactionsSection({ transactions = [] }) {
             ) : (
               // This is the fallback for the entire table if transactions.length === 0 initially
               <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5 }}>
-                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />                
+                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
+                <Typography variant="body2" color="text.secondary">No transactions to display.</Typography>
               </Box>
             )}
           </Paper>
