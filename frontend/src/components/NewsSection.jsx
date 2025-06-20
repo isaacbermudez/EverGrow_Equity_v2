@@ -60,7 +60,7 @@ const formatCurrency = (amount) => {
 
 // Loading skeleton for winners/losers cards
 const WinnersLosersLoadingSkeleton = () => (
-  <Paper elevation={3} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+  <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
     <Skeleton variant="text" width="50%" height={40} sx={{ mx: 'auto', mb: 2 }} />
     <Grid container spacing={3}>
       {[0, 1].map((index) => (
@@ -364,7 +364,6 @@ const WinnersLosersSection = React.memo(({ portfolioData, loading }) => {
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           {renderAssetList(winners, true)}
@@ -373,7 +372,6 @@ const WinnersLosersSection = React.memo(({ portfolioData, loading }) => {
           {renderAssetList(losers, false)}
         </Grid>
       </Grid>
-    </Paper>
   );
 });
 
@@ -905,7 +903,7 @@ export default function NewsSection({ portfolioData = [] }) {
         }}>
 
           <Paper
-            elevation={3}
+            elevation={0}
             sx={{
               p: 1,
               borderRadius: 2,
@@ -925,7 +923,7 @@ export default function NewsSection({ portfolioData = [] }) {
             />
           </Paper>
           <Paper
-            elevation={3}
+            elevation={0}
             sx={{
               p: 1,
               borderRadius: 2,

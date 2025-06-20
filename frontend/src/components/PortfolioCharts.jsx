@@ -19,11 +19,10 @@ import { teal } from '@mui/material/colors';
 const safeNum = (n) => (typeof n === 'number' ? n : 0);
 
 const COLORS = [
-  teal[500], '#00C49F', '#FFBB28', '#FF8042', '#A28DFF', '#FF6384',
-  '#36A2EB', '#FFCE56', '#8A2BE2', '#00CED1', '#FF4500', '#DA70D6',
-  '#E0BBE4', '#957DAD', '#D291BC', '#FFC72C', '#FF6B6B', '#7A73F0'
+  teal[500], '#1A237E', '#B71C1C', '#E65100', '#33691E', '#4A148C',
+  '#BF360C', '#1B5E20', '#880E4F', '#E91E63', '#3F51B5', '#795548',
+  '#607D8B', '#FF5722', '#9C27B0', '#2E7D32', '#C62828', '#5D4037'
 ];
-
 // Advanced label renderer with multiple display modes
 const renderAdvancedLabel = ({
   cx, cy, midAngle, innerRadius, outerRadius, percent, value, name
@@ -47,31 +46,33 @@ const renderAdvancedLabel = ({
   let subText = '';
 
   switch (labelMode) {
-    case 'percentage':
+    case 'name':
+      labelText = name.length > 5 ? `${name.substring(0, 10)}...` : name;
+      subText = `$${Math.ceil(value)}`;
+      break;
+    /*case 'percentage':
       labelText = `${(percent * 100).toFixed(1)}%`;
       break;
     case 'value':
       labelText = `$${(value / 1000).toFixed(0)}K`;
       break;
-    case 'name':
-      labelText = name.length > 8 ? `${name.substring(0, 8)}...` : name;
-      //subText = `${(percent * 100).toFixed(1)}%`;
-      subText = `$${Math.ceil(value)}`;
-      break;
     case 'nameValue':
-      labelText = name.length > 6 ? `${name.substring(0, 6)}...` : name;
+      labelText = name; 
       subText = `$${(value / 1000).toFixed(0)}K`;
       break;
     case 'full':
       labelText = `${(percent * 100).toFixed(1)}%`;
       subText = `$${(value / 1000).toFixed(0)}K`;
-      break;
+      break;*/
     default:
       labelText = `${(percent * 100).toFixed(1)}%`;
   }
 
   const textAnchor = x > cx ? 'start' : 'end';
   const isLeft = x < cx;
+
+  // Dynamic width based on text length
+  const textWidth = Math.max(60, labelText.length * 6 + 20);
 
   return (
     <g>
@@ -83,13 +84,13 @@ const renderAdvancedLabel = ({
         fill="none"
       />
 
-      {/* Label background */}
+      {/* Label background - dynamic width */}
       <rect
-        x={isLeft ? x - 60 : x}
+        x={isLeft ? x - textWidth : x}
         y={subText ? y - 12 : y - 8}
-        width="60"
+        width={textWidth}
         height={subText ? "24" : "16"}
-        fill="rgba(0,0,0,0.8)"
+        fill="rgba(0, 0, 0, 0.8)"
         rx="4"
         stroke="rgba(255,255,255,0.2)"
         strokeWidth="1"
@@ -97,7 +98,7 @@ const renderAdvancedLabel = ({
 
       {/* Main label text */}
       <text
-        x={isLeft ? x - 30 : x + 30}
+        x={isLeft ? x - textWidth / 2 : x + textWidth / 2}
         y={subText ? y - 2 : y}
         textAnchor="middle"
         dominantBaseline="middle"
@@ -111,7 +112,7 @@ const renderAdvancedLabel = ({
       {/* Sub text */}
       {subText && (
         <text
-          x={isLeft ? x - 30 : x + 30}
+          x={isLeft ? x - textWidth / 2 : x + textWidth / 2}
           y={y + 8}
           textAnchor="middle"
           dominantBaseline="middle"
@@ -125,7 +126,6 @@ const renderAdvancedLabel = ({
     </g>
   );
 };
-
 // Inner labels for larger segments
 const renderInnerLabel = ({
   cx, cy, midAngle, innerRadius, outerRadius, percent, value, name
@@ -146,7 +146,7 @@ const renderInnerLabel = ({
       dominantBaseline="middle"
       fontSize="14"
       fontWeight="700"
-      stroke="rgba(0,0,0,0.8)"
+      stroke="rgba(0, 0, 0, 0.14)"
       strokeWidth="1"
     >
       {`${(percent * 100).toFixed(0)}%`}
@@ -172,7 +172,7 @@ const CustomTooltip = ({ active, payload }) => {
           Value: ${data.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </Typography>
         <Typography variant="caption" sx={{ color: '#FFBB28', display: 'block' }}>
-          Share: {((data.value / data.total) * 100).toFixed(2)}%
+          Weight: {((data.value / data.total) * 100).toFixed(2)}%
         </Typography>
       </Box>
     );
@@ -245,7 +245,7 @@ export default function PortfolioCharts({ rows = [] }) {
                 data={visibleData}
                 cx="50%"
                 cy="50%"
-                innerRadius={50}
+                innerRadius={65}
                 outerRadius={100}
                 dataKey={dataKey}
                 labelLine={false}
@@ -265,7 +265,7 @@ export default function PortfolioCharts({ rows = [] }) {
                   data={visibleData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={50}
+                  innerRadius={65}
                   outerRadius={100}
                   dataKey={dataKey}
                   labelLine={false}
@@ -308,8 +308,8 @@ export default function PortfolioCharts({ rows = [] }) {
                   border: '1px solid rgba(255,255,255,0.3)'
                 }} />
                 <Typography variant="caption" sx={{
-                  color: 'rgba(255,255,255,0.9)',
-                  fontSize: '0.75rem',
+                  color: 'rgb(255, 255, 255)',
+                  fontSize: '0.6rem',
                   fontWeight: 600
                 }}>
                   {entry.name}

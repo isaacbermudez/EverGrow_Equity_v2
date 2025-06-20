@@ -75,7 +75,7 @@ const formatPercentage = (value) => {
 const FinancialHealthScorecard = React.memo(({ metrics, theme }) => {
   if (!metrics || Object.keys(metrics).length === 0) {
     return (
-      <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3 }}>
+      <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3 }}>
         <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary, borderBottom: `1px solid ${theme.palette.divider}`, pb: 1, fontWeight: 'bold' }}>
           Financial Health Analysis
         </Typography>
@@ -226,7 +226,7 @@ const FinancialHealthScorecard = React.memo(({ metrics, theme }) => {
 
   if (scorecardCategories.length === 0) {
     return (
-      <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3 }}>
+      <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3 }}>
         <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary, borderBottom: `1px solid ${theme.palette.divider}`, pb: 1, fontWeight: 'bold' }}>
           Análisis de Salud Financiera
         </Typography>
@@ -238,7 +238,7 @@ const FinancialHealthScorecard = React.memo(({ metrics, theme }) => {
   }
 
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3 }}>
+    <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3 }}>
       <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary, borderBottom: `1px solid ${theme.palette.divider}`, pb: 1, fontWeight: 'bold' }}>
         Análisis de Salud Financiera
       </Typography>
@@ -435,7 +435,7 @@ const CompanyHeaderCard = React.memo(({ companyProfile, basicFinancials, theme }
   if (!companyProfile && !basicFinancials) return null;
 
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 3 }}>
+    <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3, display: 'flex', alignItems: 'center', gap: 3 }}>
       {companyProfile?.logo && companyProfile.logo !== "" ? (
         <img src={companyProfile.logo} alt={`${companyProfile.name} logo`} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'contain', border: `2px solid ${theme.palette.divider}`, flexShrink: 0 }} />
       ) : (
@@ -511,7 +511,7 @@ const AnalystCoverageCard = React.memo(({ basicFinancials, theme }) => {
   ].filter(rating => safeNum(rating.value) > 0);
 
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3 }}>
+    <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, borderBottom: `1px solid ${theme.palette.divider}`, pb: 1 }}>
         <Target size={24} style={{ marginRight: 8, color: theme.palette.primary.main }} />
         <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.palette.text.primary }}>
@@ -860,7 +860,7 @@ export default function FinancialsSection({ portfolioData = [] }) {
           <CompanyHeaderCard companyProfile={companyProfile} basicFinancials={basicFinancials} theme={theme} />
 
           {/* Key Metrics Snapshot */}
-          <Paper elevation={3} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3 }}>
+          <Paper elevation={0} sx={{ p: 3, mb: 3, bgcolor: theme.palette.background.paper, borderRadius: 3 }}>
             <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary, borderBottom: `1px solid ${theme.palette.divider}`, pb: 1, fontWeight: 'bold' }}>
               Snapshot
             </Typography>
@@ -923,7 +923,7 @@ export default function FinancialsSection({ portfolioData = [] }) {
           <FinancialHealthScorecard metrics={financialMetrics} theme={theme} />
 
           {/* Other Financial Details Table (now grouped) */}
-          <Paper elevation={3} sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 3 }}>
+          <Paper elevation={0} sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 3 }}>
             <Typography variant="h6" sx={{ mb: 2, color: theme.palette.text.primary, borderBottom: `1px solid ${theme.palette.divider}`, pb: 1, fontWeight: 'bold' }}>
               Other Financial Details
             </Typography>

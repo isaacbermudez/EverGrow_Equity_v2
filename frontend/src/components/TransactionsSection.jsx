@@ -48,6 +48,7 @@ const formatDate = (dateString) => {
 };
 
 // Custom Table Header Cell component with sorting
+// This component should now ONLY be used for direct sortable THs, not for nested scenarios.
 const SortableTableCell = ({ children, orderBy, orderDirection, property, onRequestSort, theme, align = 'left' }) => {
   const isSorted = orderBy === property;
   return (
@@ -123,9 +124,9 @@ export default function TransactionsSection({ transactions = [] }) {
   // Helper function to render bar chart labels with threshold logic (adjusted for horizontal)
   const renderBarLabel = (props) => {
     const { x, y, width, height, value } = props;
-    
+
     // Define a minimum bar length (width for horizontal bars) for a label to be displayed
-    const MIN_BAR_LENGTH_FOR_LABEL = 40; // Adjust as needed
+    const MIN_BAR_LENGTH_FOR_LABEL = 0; // Adjust as needed
 
     // Hide label if bar length is too small OR value is below the set threshold
     if (width < MIN_BAR_LENGTH_FOR_LABEL || (minAmountThreshold > 0 && value < minAmountThreshold)) {
@@ -146,7 +147,7 @@ export default function TransactionsSection({ transactions = [] }) {
         dominantBaseline="middle"
         fontSize="9" // Smaller font size
         fontWeight="700"
-        textShadow={`1px 1px 2px ${theme.palette.background.paper}`}
+      // Removed textShadow as it causes React warnings on SVG elements
       >
         {displayValue}
       </text>
@@ -213,7 +214,9 @@ export default function TransactionsSection({ transactions = [] }) {
       currentMonthlyInvestments[monthYear] = (currentMonthlyInvestments[monthYear] || 0) + amountInvested;
     });
 
-    const currentTickerInvestmentSummary = Object.entries(currentTickerInvestments).map(([ticker, amount]) => ({ ticker, amount }));
+    const currentTickerInvestmentSummary = Object.entries(currentTickerInvestments)
+      .map(([ticker, amount]) => ({ ticker, amount }))
+      .sort((a, b) => b.amount - a.amount);
     const currentMonthlyTransactionCountData = Object.keys(currentMonthlyTransactionCounts).sort().map(month => ({ month, count: currentMonthlyTransactionCounts[month] }));
     const currentMonthlyInvestmentAmountData = Object.keys(currentMonthlyInvestments).sort().map(month => ({ month, amount: currentMonthlyInvestments[month] }));
 
@@ -275,7 +278,7 @@ export default function TransactionsSection({ transactions = [] }) {
         <Repeat size={24} color="#f9a825" style={{ marginRight: 10 }} /> Transactions Analysis
       </Typography>
 
-      <Paper elevation={3} sx={{ borderRadius: 2, mb: 4 }}>
+      <Paper elevation={0} sx={{ borderRadius: 2, mb: 4 }}>
         <Tabs value={selectedTab} onChange={handleTabChange} centered indicatorColor="primary" textColor="primary">
           <Tab label="Historical Trend" />
           <Tab label="Transaction Details" />
@@ -336,7 +339,7 @@ export default function TransactionsSection({ transactions = [] }) {
           )}
 
           <Paper
-            elevation={3}
+            elevation={0}
             sx={{
               p: 3,
               borderRadius: 2,
@@ -479,14 +482,13 @@ export default function TransactionsSection({ transactions = [] }) {
               </ResponsiveContainer>
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 400 }}>
-                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />                
-                <Typography variant="body2" color="text.secondary">No investment amount data by ticker matching current filters.</Typography>
+                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
               </Box>
             )}
           </Paper>
 
           <Paper
-            elevation={3}
+            elevation={0}
             sx={{
               p: 3,
               borderRadius: 2,
@@ -649,13 +651,12 @@ export default function TransactionsSection({ transactions = [] }) {
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 350 }}>
                 <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
-                <Typography variant="body2" color="text.secondary">No sufficient data for monthly transaction trend matching current filters.</Typography>
               </Box>
             )}
           </Paper>
 
           <Paper
-            elevation={3}
+            elevation={0}
             sx={{
               p: 3,
               borderRadius: 2,
@@ -826,8 +827,7 @@ export default function TransactionsSection({ transactions = [] }) {
               </ResponsiveContainer>
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 350 }}>
-                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />                
-                <Typography variant="body2" color="text.secondary">No sufficient data for monthly investment trend matching current filters.</Typography>
+                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
               </Box>
             )}
           </Paper>
@@ -837,7 +837,7 @@ export default function TransactionsSection({ transactions = [] }) {
       {selectedTab === 1 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Paper
-            elevation={3}
+            elevation={0}
             sx={{
               p: 3,
               borderRadius: 2,
@@ -845,49 +845,6 @@ export default function TransactionsSection({ transactions = [] }) {
               border: '1px solid rgba(255,255,255,0.12)',
             }}
           >
-            <Typography variant="h6" gutterBottom sx={{ color: 'white', fontWeight: 600, mb: 2 }}>
-              Average Transaction Metrics
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, justifyContent: 'center' }}>
-              <Box>
-                <Typography variant="body2" color="text.secondary">Total Transactions (All Operations):</Typography>
-                <Typography variant="h5" sx={{ fontWeight: 'bold', color: theme.palette.text.primary }}>
-                  {totalTransactions}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">Total Invested Amount (All Operations):</Typography>
-                <Typography variant="h5" sx={{ fontWeight: 'bold', color: theme.palette.text.primary }}>
-                  {formatCurrency(totalAmountInvested)}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">Average amount per BUY operation:</Typography>
-                <Typography variant="h5" sx={{ fontWeight: 'bold', color: theme.palette.text.primary }}>
-                  {totalBuyTransactions > 0 ? formatCurrency(totalBuyAmount / totalBuyTransactions) : formatCurrency(0)}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">Average amount per SELL operation:</Typography>
-                <Typography variant="h5" sx={{ fontWeight: 'bold', color: theme.palette.text.primary }}>
-                  {totalSellTransactions > 0 ? formatCurrency(totalSellAmount / totalSellTransactions) : formatCurrency(0)}
-                </Typography>
-              </Box>
-            </Box>
-          </Paper>
-
-          <Paper
-            elevation={3}
-            sx={{
-              p: 3,
-              borderRadius: 2,
-              minHeight: 450,
-              border: '1px solid rgba(255,255,255,0.12)',
-            }}
-          >
-            <Typography variant="h6" gutterBottom sx={{ color: theme.palette.text.primary, fontWeight: 600, mb: 2 }}>
-              All Transactions
-            </Typography>
             {transactions.length > 0 ? (
               <TableContainer
                 sx={{
@@ -927,19 +884,25 @@ export default function TransactionsSection({ transactions = [] }) {
                           letterSpacing: '0.5px'
                         }}
                       >
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}> {/* Adjusted gap */}
-                          <SortableTableCell
-                            orderBy={orderBy}
-                            orderDirection={orderDirection}
-                            property="Ticker"
-                            onRequestSort={handleRequestSort}
-                            theme={theme}
-                            align="left"
-                            // Removed padding and border for nested SortableCell as it's not a direct table cell
-                            // Removed sx={{ padding: '0px', borderBottom: 'none' }}
-                          >
-                            Ticker
-                          </SortableTableCell>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 0.5 }}> {/* Added mb */}
+                            <Typography variant="inherit" sx={{ fontWeight: 'inherit', color: 'inherit' }}>
+                              Ticker
+                            </Typography>
+                            <IconButton
+                              onClick={() => handleRequestSort('Ticker')}
+                              size="small"
+                              sx={{
+                                ml: 'auto', // Push to the right
+                                color: theme.palette.text.primary,
+                                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
+                              }}
+                            >
+                              {orderBy === 'Ticker' && orderDirection === 'desc' ?
+                                <ArrowDown style={{ fontSize: 16 }} /> :
+                                <ArrowUp style={{ fontSize: 16, opacity: orderBy === 'Ticker' ? 1 : 0.3 }} />}
+                            </IconButton>
+                          </Box>
                           <TextField
                             variant="outlined"
                             size="small"
@@ -947,8 +910,8 @@ export default function TransactionsSection({ transactions = [] }) {
                             value={tickerFilter}
                             onChange={handleTickerFilterChange}
                             sx={{
-                              width: '100%', // Ensure it takes full width of cell
-                              mt: 0.5, // Small top margin
+                              width: '100%',
+                              mt: 0.5,
                               '& .MuiOutlinedInput-root': {
                                 height: 32,
                                 fontSize: '0.75rem',
@@ -981,12 +944,12 @@ export default function TransactionsSection({ transactions = [] }) {
                           backgroundColor: theme.palette.background.default,
                           borderBottom: `2px solid ${theme.palette.primary.main}`,
                           fontSize: '0.875rem',
-                          padding: '8px 12px', // Adjusted padding
+                          padding: '8px 12px',
                           textTransform: 'uppercase',
                           letterSpacing: '0.5px'
                         }}
                       >
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}> {/* Adjusted gap */}
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
                           <Typography variant="inherit" sx={{ fontWeight: 'inherit', color: 'inherit', mb: 0.5 }}>
                             Operation
                           </Typography>
@@ -997,14 +960,14 @@ export default function TransactionsSection({ transactions = [] }) {
                             size="small"
                             sx={{
                               backgroundColor: theme.palette.background.paper,
-                              width: '100%', // Take full width
+                              width: '100%',
                               '& .MuiToggleButton-root': {
                                 fontSize: '0.7rem',
                                 padding: '4px 8px',
                                 textTransform: 'none',
                                 borderColor: theme.palette.divider,
                                 color: theme.palette.text.secondary,
-                                flexGrow: 1, // Distribute space evenly
+                                flexGrow: 1,
                                 '&.Mui-selected': {
                                   backgroundColor: teal[700],
                                   color: 'white',
@@ -1093,8 +1056,8 @@ export default function TransactionsSection({ transactions = [] }) {
                             },
                             borderLeft:
                               row.Ops === 'Buy' ? `4px solid ${theme.palette.success.main}` :
-                              row.Ops === 'Sell' ? `44px solid ${theme.palette.error.main}` :
-                              `4px solid ${theme.palette.info.main}`,
+                                row.Ops === 'Sell' ? `4px solid ${theme.palette.error.main}` : // Corrected this line as it was `44px`
+                                  `4px solid ${theme.palette.info.main}`,
                             transition: 'all 0.3s ease'
                           }}
                         >
@@ -1216,7 +1179,6 @@ export default function TransactionsSection({ transactions = [] }) {
                         <TableCell colSpan={7} sx={{ textAlign: 'center', py: 5, color: theme.palette.text.secondary }}>
                           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '120px' }}>
                             <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
-                            <Typography variant="body2" color="text.secondary">No transactions to display matching current filters.</Typography>
                           </Box>
                         </TableCell>
                       </TableRow>
@@ -1228,7 +1190,6 @@ export default function TransactionsSection({ transactions = [] }) {
               // This is the fallback for the entire table if transactions.length === 0 initially
               <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5 }}>
                 <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
-                <Typography variant="body2" color="text.secondary">No transactions to display.</Typography>
               </Box>
             )}
           </Paper>
