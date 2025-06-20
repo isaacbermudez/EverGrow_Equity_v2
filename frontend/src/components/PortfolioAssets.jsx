@@ -73,30 +73,6 @@ export default function PortfolioAssets({ rows = [] }) {
     return () => document.head.removeChild(style);
   }, []);
 
-  const SummaryCard = ({ icon: Icon, title, value, change }) => {
-    const isPos = safeNum(change) >= 0;
-    return (
-      <Card
-        variant="outlined"
-        sx={{
-          animation: 'slideUp 0.8s ease-out',
-          cursor: 'default'
-        }}
-      >
-        <CardContent>
-          <Box display="flex" justifyContent="space-between" mb={1}>
-            <Icon size={24} color="#1976d2" />
-            <Typography variant="subtitle2" color={isPos ? 'success.main' : 'error.main'}>
-              {isPos && '+'}{safeNum(change).toFixed(2)}%
-            </Typography>
-          </Box>
-          <Typography variant="body2" color="text.secondary">{title}</Typography>
-          <Typography variant="h6">{value}</Typography>
-        </CardContent>
-      </Card>
-    );
-  };
-
   const HoldingCard = ({ stock, index }) => {
     const isPos = safeNum(stock.profitLoss) >= 0;
     // Delay for animation might need adjustment or removal if pagination makes it jumpy
@@ -164,27 +140,39 @@ export default function PortfolioAssets({ rows = [] }) {
           </Box>
 
           {/* Metrics Grid */}
-          <Grid container spacing={1}>
+          <Grid container spacing={2}>
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Holdings</Typography>
-              <Typography variant="subtitle1">{safeNum(stock.holdings)}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Holdings
+              </Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                {safeNum(stock.holdings)}
+              </Typography>
             </Grid>
+
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Price</Typography>
-              <Typography variant="subtitle1">
+              <Typography variant="caption" color="text.secondary">
+                Price
+              </Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
                 ${safeNum(stock.currentPrice).toFixed(2)}
               </Typography>
             </Grid>
 
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Invested</Typography>
-              <Typography variant="subtitle1">
+              <Typography variant="caption" color="text.secondary">
+                Invested
+              </Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
                 ${safeNum(stock.CI).toFixed(2)}
               </Typography>
             </Grid>
+
             <Grid item xs={6}>
-              <Typography variant="caption" color="text.secondary">Market Value</Typography>
-              <Typography variant="subtitle1">
+              <Typography variant="caption" color="text.secondary">
+                Market Value
+              </Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
                 ${marketValue.toFixed(2)}
               </Typography>
             </Grid>
@@ -215,54 +203,50 @@ export default function PortfolioAssets({ rows = [] }) {
   };
 
   return (
-    // The main Box of PortfolioAssets, applying the gradient background
-    <Box p={3} sx={{ background: 'linear-gradient(135deg, #0f172a, #1e293b)' }}>     
-
-      <Box>
-        {/* Pagination Controls - conditionally rendered */}
-        <Box display="flex" justifyContent="center" mb={4}>
-          {positivePLStocks.length > 0 && (
-            <Button
-              variant={currentPage === 0 ? "contained" : "outlined"}
-              onClick={() => setCurrentPage(0)}
-              sx={{ mr: 2 }}
-            >
-              Positive P/L ({positivePLStocks.length})
-            </Button>
-          )}
-          {negativePLStocks.length > 0 && (
-            <Button
-              variant={currentPage === 1 ? "contained" : "outlined"}
-              onClick={() => setCurrentPage(1)}
-            >
-              Negative P/L ({negativePLStocks.length})
-            </Button>
-          )}
-        </Box>
-
-        {/* Holdings Grid - now displays based on currentPage */}
-        <Grid container spacing={2}>
-          {displayedRows.length > 0 ? (
-            displayedRows.map((stock, idx) => (
-              <Grid key={stock.symbol} item xs={12} md={4} lg={3}>
-                <HoldingCard stock={stock} index={idx} />
-              </Grid>
-            ))
-          ) : (
-            <Grid item xs={12}>
-              <Typography variant="h6" color="text.secondary" textAlign="center" mt={4}>
-                {/* Conditional message based on which page is empty */}
-                {positivePLStocks.length === 0 && negativePLStocks.length === 0
-                  ? "No positions to display."
-                  : (currentPage === 0
-                    ? "No positive P/L positions to display."
-                    : "No negative P/L positions to display.")
-                }
-              </Typography>
-            </Grid>
-          )}
-        </Grid>
+    <Box>
+      {/* Pagination Controls - conditionally rendered */}
+      <Box display="flex" justifyContent="center" mb={4}>
+        {positivePLStocks.length > 0 && (
+          <Button
+            variant={currentPage === 0 ? "contained" : "outlined"}
+            onClick={() => setCurrentPage(0)}
+            sx={{ mr: 2 }}
+          >
+            Positive P/L ({positivePLStocks.length})
+          </Button>
+        )}
+        {negativePLStocks.length > 0 && (
+          <Button
+            variant={currentPage === 1 ? "contained" : "outlined"}
+            onClick={() => setCurrentPage(1)}
+          >
+            Negative P/L ({negativePLStocks.length})
+          </Button>
+        )}
       </Box>
+
+      {/* Holdings Grid - now displays based on currentPage */}
+      <Grid container spacing={2}>
+        {displayedRows.length > 0 ? (
+          displayedRows.map((stock, idx) => (
+            <Grid key={stock.symbol} item xs={12} md={4} lg={3}>
+              <HoldingCard stock={stock} index={idx} />
+            </Grid>
+          ))
+        ) : (
+          <Grid item xs={12}>
+            <Typography variant="h6" color="text.secondary" textAlign="center" mt={4}>
+              {/* Conditional message based on which page is empty */}
+              {positivePLStocks.length === 0 && negativePLStocks.length === 0
+                ? "No positions to display."
+                : (currentPage === 0
+                  ? "No positive P/L positions to display."
+                  : "No negative P/L positions to display.")
+              }
+            </Typography>
+          </Grid>
+        )}
+      </Grid>
     </Box>
   );
 }

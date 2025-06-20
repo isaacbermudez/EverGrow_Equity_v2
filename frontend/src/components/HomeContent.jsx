@@ -36,7 +36,7 @@ export default function HomeContent({ data, handleAssets }) {
       <Grid container spacing={3} sx={{ width: '100%' }}>
         <Grid item xs={12}>
           <Paper
-            elevation={6}
+            elevation={0}
             sx={{
               p: 3,
               width: '100%',
