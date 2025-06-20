@@ -1,5 +1,5 @@
 // src/components/Sidebar.jsx
-import React, { useState, useEffect } from 'react'; // Added useEffect
+import React, { useState, useEffect } from 'react';
 import {
   Drawer,
   List,
@@ -13,8 +13,8 @@ import {
   Box,
   IconButton,
   CircularProgress,
-  Alert, // Added Alert for holiday errors
-  useTheme // Added useTheme for theming
+  Alert,
+  useTheme
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
@@ -22,11 +22,15 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import RepeatIcon from '@mui/icons-material/Repeat';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ClearIcon from '@mui/icons-material/Clear';
-import EventAvailableIcon from '@mui/icons-material/EventAvailable'; // Added for holiday icon
-import { teal, red, grey } from '@mui/material/colors'; // Keeping original color imports for consistency, even if red/grey aren't used here.
-import moment from 'moment-timezone'; // Used for date formatting in holidays
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import { teal } from '@mui/material/colors'; // Only keep teal since red/grey are not directly used here.
+import moment from 'moment-timezone';
 import { NavLink } from 'react-router-dom';
 import FileUpload from './FileUpload';
+
+// Constants for frontend local storage caching (still useful for immediate client-side refreshes)
+const MARKET_HOLIDAYS_CLIENT_CACHE_KEY = 'marketHolidaysClientCache';
+const CLIENT_CACHE_TTL_HOURS = 1; // Shorter client-side cache TTL, backend has longer Redis cache
 
 export default function Sidebar({
   drawerWidth = 100,
@@ -36,18 +40,53 @@ export default function Sidebar({
   onRefreshData,
   isLoading
 }) {
-  const theme = useTheme(); // Initialize useTheme hook
+  const theme = useTheme();
 
-  // State for Market Holidays
   const [marketHolidays, setMarketHolidays] = useState([]);
-  const [loadingHolidays, setLoadingHolidays] = useState(true); // Renamed to avoid prop conflict
+  const [loadingHolidays, setLoadingHolidays] = useState(true);
   const [holidayError, setHolidayError] = useState(null);
 
   useEffect(() => {
-    const fetchMarketHolidays = async () => {
+    const fetchAndFilterMarketHolidays = async () => { // Renamed for clarity
       setLoadingHolidays(true);
       setHolidayError(null);
 
+      const now = moment();
+      const oneMonthLater = moment().add(1, 'month');
+
+      // Helper function to filter and sort holidays
+      const filterAndSortHolidays = (holidays) => {
+        return (Array.isArray(holidays) ? holidays : [])
+          .filter(holiday => {
+            const holidayDate = moment(holiday.atDate);
+            // Keep holidays that are today or in the future AND within the next month
+            return holidayDate.isSameOrAfter(now, 'day') && holidayDate.isSameOrBefore(oneMonthLater, 'day');
+          })
+          .sort((a, b) => moment(a.atDate).valueOf() - moment(b.atDate).valueOf());
+      };
+
+      // 1. Try to load from CLIENT-SIDE localStorage first
+      const cachedData = localStorage.getItem(MARKET_HOLIDAYS_CLIENT_CACHE_KEY);
+      if (cachedData) {
+        try {
+          const { data, timestamp } = JSON.parse(cachedData);
+          const cachedMoment = moment(timestamp);
+
+          // Check if client-side cache is fresh
+          if (now.diff(cachedMoment, 'hours') < CLIENT_CACHE_TTL_HOURS) {
+            // Apply filtering and sorting to cached data
+            const processedCachedHolidays = filterAndSortHolidays(data);
+            setMarketHolidays(processedCachedHolidays);
+            setLoadingHolidays(false);
+            return; // Exit as we've used cached data
+          }
+        } catch (e) {
+          console.warn("Error parsing or using client-side cached market holidays, fetching fresh data:", e);
+          localStorage.removeItem(MARKET_HOLIDAYS_CLIENT_CACHE_KEY); // Clear invalid cache
+        }
+      }
+
+      // 2. If no fresh client-side cache, fetch from BACKEND API
       try {
         const holidaysResponse = await fetch('/api/market-holidays?exchange=US');
         if (!holidaysResponse.ok) {
@@ -58,7 +97,17 @@ export default function Sidebar({
         if (holidaysData.error) {
           throw new Error(`Market Holidays API error: ${holidaysData.error}`);
         }
-        setMarketHolidays(Array.isArray(holidaysData) ? holidaysData : []);
+
+        // Apply filtering and sorting to fetched holidays
+        const processedHolidays = filterAndSortHolidays(holidaysData);
+        setMarketHolidays(processedHolidays);
+
+        // Store the new data in client-side localStorage with a timestamp
+        localStorage.setItem(MARKET_HOLIDAYS_CLIENT_CACHE_KEY, JSON.stringify({
+          data: processedHolidays, // Store the processed data
+          timestamp: now.toISOString()
+        }));
+
       } catch (err) {
         console.error("Error fetching market holidays:", err);
         setHolidayError(`Market holidays unavailable: ${err.message}`);
@@ -68,10 +117,11 @@ export default function Sidebar({
       }
     };
 
-    fetchMarketHolidays();
+    fetchAndFilterMarketHolidays(); // Call the renamed function
 
-    // Holidays don't need frequent refresh as they are fixed, but keep a long interval
-    const intervalId = setInterval(fetchMarketHolidays, 24 * 60 * 60 * 1000); // Check once a day
+    // Set up a shorter interval for client-side re-fetch to ensure data is reasonably fresh
+    // The backend's Redis cache will handle the heavy lifting of API calls.
+    const intervalId = setInterval(fetchAndFilterMarketHolidays, CLIENT_CACHE_TTL_HOURS * 60 * 60 * 1000);
     return () => clearInterval(intervalId); // Cleanup on unmount
   }, []); // Empty dependency array means this runs once on mount and cleans up on unmount
 
@@ -143,6 +193,7 @@ export default function Sidebar({
                   Upcoming U.S. Market Holidays:
                 </Typography>
                 <List dense sx={{ p: 0 }}>
+                  {/* Slice to show only the first 3 holidays, as before */}
                   {marketHolidays.slice(0, 3).map((holiday, index) => (
                     <ListItem key={index} sx={{ p: 0, m: 0 }}>
                       <ListItemIcon sx={{ minWidth: 24, color: 'white' }}> {/* Adjusted minWidth for smaller sidebar icons */}
@@ -151,7 +202,7 @@ export default function Sidebar({
                       <ListItemText
                         primary={
                           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', lineHeight: 1.2 }}>
-                            {holiday.eventName} ({moment(holiday.atDate).format('MMM D, YYYY')})
+                            {holiday.eventName} ({moment(holiday.atDate).format('MMM D,YYYY')})
                           </Typography>
                         }
                         sx={{ my: 0 }}
