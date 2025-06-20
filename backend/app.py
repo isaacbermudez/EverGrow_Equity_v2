@@ -28,6 +28,6 @@ if __name__ == "__main__":
     if not Config.ALPHA_VANTAGE_API_KEY or Config.ALPHA_VANTAGE_API_KEY == "YOUR_ALPHA_VANTAGE_API_KEY":
         print("WARNING: ALPHA_VANTAGE_API_KEY is not set or is default. Alpha Vantage features may not work.")
 
-    # Run the Flask development server
-    app.run(debug=True, port=5000)
+    # Run the Flask development server on port 5001
+    app.run(debug=True, port=5001) # CHANGED PORT TO 5001
 
