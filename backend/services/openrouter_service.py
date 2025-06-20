@@ -2,7 +2,7 @@
 import requests
 import json
 from config import Config
-from utils.cache import chat_cache, get_cached_data, set_cached_data
+from utils.cache import get_cached_data, set_cached_data # Removed chat_cache from import
 
 def chat_with_openrouter_model(user_message, conversation_history, tool_definitions):
     """

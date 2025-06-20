@@ -24,6 +24,12 @@ class Config:
     CACHE_TTL_BASIC_FINANCIALS = 3600
     CACHE_TTL_CHAT = 3600
 
+    # Redis Configuration
+    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+    REDIS_DB = int(os.getenv("REDIS_DB", 0))
+    REDIS_PASSWORD = os.getenv("REDIS_PASSWORD") # Optional, if your Redis requires a password
+
     # DeepDive System Prompt (moved here for consistency, could be in a separate text file)
     DEEPDIVE_SYSTEM_PROMPT = """
 Actúa como DeepDive Stocks, un analista de empresas para inversión. Tu tarea es realizar un análisis profesional, exhaustivo y estratégico en español para inversores avanzados. Usa navegación web si está disponible. Evalúa modelo de negocio, noticias recientes, directiva, sector, resiliencia, posición en el mercado, si la empresa es Blue Chip o Multibagger, explicación de variación reciente del precio y el valor intrínseco estimado. Usa tablas con esta estructura exacta para los siguientes bloques:
