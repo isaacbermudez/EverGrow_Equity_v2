@@ -116,7 +116,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
             width: '100%',
             justifyContent: 'flex-start',
             cursor: 'default',
-            fontSize: '0.85rem',
+            fontSize: '0.7rem',
             py: 0.5,
           }}
         />
@@ -167,7 +167,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
                   '&:hover': { backgroundColor: teal[500] },
                   color: 'white',
                   textTransform: 'none',
-                  fontSize: '0.75rem',
+                  fontSize: '0.7rem',
                   px: 1.5,
                   py: 0.5,
                 }}
@@ -196,7 +196,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
               border: `1px solid ${theme.palette.error.main}`,
               borderRadius: 2,
               color: theme.palette.text.primary,
-              fontSize: '0.8rem',
+              fontSize: '0.7rem',
               py: 1,
               px: 1.5,
               '& .MuiAlert-icon': {
