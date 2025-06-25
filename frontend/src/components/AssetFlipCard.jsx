@@ -188,7 +188,7 @@ export default function AssetFlipCard({ stock, assetImageSrc, sx }) {
                             mb: 1,
                             textAlign: 'center',
                             fontSize: '0.9rem',
-                            color: theme.palette.text.secondary
+                            color: theme.palette.text.primary
                         }}
                     >
                         {stock?.symbol || 'N/A'}
@@ -210,7 +210,7 @@ export default function AssetFlipCard({ stock, assetImageSrc, sx }) {
                                 mb: theme.spacing(0.4)
                             }}>
                                 <Typography variant="caption" sx={{
-                                    color: theme.palette.text.secondary,
+                                    color: 'yellow',
                                     fontSize: '0.7rem',
                                     opacity: 0.7,
                                     textAlign: 'right',
@@ -220,6 +220,7 @@ export default function AssetFlipCard({ stock, assetImageSrc, sx }) {
                                     {label}
                                 </Typography>
                                 <Typography variant="caption" sx={{
+                                    color: theme.palette.text.primary,
                                     fontSize: '0.7rem',
                                     fontWeight: 400,
                                     textAlign: 'left',

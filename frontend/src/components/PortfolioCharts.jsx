@@ -1,19 +1,12 @@
 // src/components/PortfolioCharts.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Import useCallback
 import {
   Box,
   Typography,
   useTheme,
-  ToggleButton,
-  ToggleButtonGroup,
   Tooltip as MuiTooltip,
-  Switch,
-  FormControlLabel,
-  ButtonGroup,
-  Button
 } from '@mui/material';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Zap, Eye, Percent, DollarSign, Tag } from 'lucide-react';
 import { teal } from '@mui/material/colors';
 
 const safeNum = (n) => (typeof n === 'number' ? n : 0);
@@ -23,6 +16,7 @@ const COLORS = [
   '#BF360C', '#1B5E20', '#880E4F', '#E91E63', '#3F51B5', '#795548',
   '#607D8B', '#FF5722', '#9C27B0', '#2E7D32', '#C62828', '#5D4037'
 ];
+
 // Advanced label renderer with multiple display modes
 const renderAdvancedLabel = ({
   cx, cy, midAngle, innerRadius, outerRadius, percent, value, name
@@ -45,25 +39,26 @@ const renderAdvancedLabel = ({
   let labelText = '';
   let subText = '';
 
+  // Use a more robust switch for label modes
   switch (labelMode) {
     case 'name':
       labelText = name.length > 5 ? `${name.substring(0, 10)}...` : name;
       subText = `$${Math.ceil(value)}`;
       break;
-    /*case 'percentage':
-      labelText = `${(percent * 100).toFixed(1)}%`;
-      break;
-    case 'value':
-      labelText = `$${(value / 1000).toFixed(0)}K`;
-      break;
-    case 'nameValue':
-      labelText = name; 
-      subText = `$${(value / 1000).toFixed(0)}K`;
-      break;
-    case 'full':
-      labelText = `${(percent * 100).toFixed(1)}%`;
-      subText = `$${(value / 1000).toFixed(0)}K`;
-      break;*/
+    /* case 'percentage':
+       labelText = `${(percent * 100).toFixed(1)}%`;
+       break;
+     case 'value':
+       labelText = `$${(value / 1000).toFixed(0)}K`;
+       break;
+     case 'nameValue':
+       labelText = name;
+       subText = `$${(value / 1000).toFixed(0)}K`;
+       break;
+     case 'full':
+       labelText = `${(percent * 100).toFixed(1)}%`;
+       subText = `$${(value / 1000).toFixed(0)}K`;
+       break;*/
     default:
       labelText = `${(percent * 100).toFixed(1)}%`;
   }
@@ -87,10 +82,10 @@ const renderAdvancedLabel = ({
       {/* Label background - dynamic width */}
       <rect
         x={isLeft ? x - textWidth : x}
-        y={subText ? y - 12 : y - 8}
+        y={subText ? y - 16 : y - 8} // Adjust Y position based on subtext
         width={textWidth}
-        height={subText ? "24" : "16"}
-        fill="rgba(0, 0, 0, 0.8)"
+        height={subText ? "30" : "20"} // Adjust height based on subtext
+        fill="rgba(0, 0, 0, 0.85)" // Slightly darker for better contrast
         rx="4"
         stroke="rgba(255,255,255,0.2)"
         strokeWidth="1"
@@ -99,10 +94,10 @@ const renderAdvancedLabel = ({
       {/* Main label text */}
       <text
         x={isLeft ? x - textWidth / 2 : x + textWidth / 2}
-        y={subText ? y - 2 : y}
+        y={subText ? y - 6 : y} // Adjust Y position for main text
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize="11"
+        fontSize="12" // Slightly larger font for readability
         fontWeight="600"
         fill="white"
       >
@@ -113,10 +108,10 @@ const renderAdvancedLabel = ({
       {subText && (
         <text
           x={isLeft ? x - textWidth / 2 : x + textWidth / 2}
-          y={y + 8}
+          y={y + 8} // Adjust Y position for subtext
           textAnchor="middle"
           dominantBaseline="middle"
-          fontSize="9"
+          fontSize="10" // Slightly larger font for readability
           fill="#FFBB28"
           fontWeight="500"
         >
@@ -126,6 +121,7 @@ const renderAdvancedLabel = ({
     </g>
   );
 };
+
 // Inner labels for larger segments
 const renderInnerLabel = ({
   cx, cy, midAngle, innerRadius, outerRadius, percent, value, name
@@ -154,6 +150,7 @@ const renderInnerLabel = ({
   );
 };
 
+// Custom Tooltip component - no changes needed here, looks good.
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
@@ -182,45 +179,72 @@ const CustomTooltip = ({ active, payload }) => {
 
 export default function PortfolioCharts({ rows = [] }) {
   const theme = useTheme();
-  const [categoryFilter, setCategoryFilter] = useState('SATELLITES');
-  const [labelMode, setLabelMode] = useState('name');
-  const [showInnerLabels, setShowInnerLabels] = useState(true);
-  const [showOuterLabels, setShowOuterLabels] = useState(true);
-  const [minPercentThreshold, setMinPercentThreshold] = useState(0);
+  // Fixed values instead of state - you can change these defaults as needed
+  const labelMode = 'name'; // Default label mode
+  const showInnerLabels = true; // Show inner labels by default
+  const showOuterLabels = true; // Show outer labels by default
+  const minPercentThreshold = 0; // Show all segments by default
 
-  const filteredRows = rows.filter(stock => categoryFilter === 'ALL' || stock.category === categoryFilter);
+  // Use filteredRows directly, no local filtering needed based on categoryFilter anymore.
+  const filteredRows = rows; // 'rows' prop already comes filtered from HomeContent
 
-  const totalValue = filteredRows.reduce((acc, stock) => acc + (safeNum(stock.currentPrice) * safeNum(stock.holdings)), 0);
-  const totalInvestedAmount = filteredRows.reduce((acc, stock) => acc + safeNum(stock.CI), 0);
+  // Memoize data calculations to prevent unnecessary re-calculations on every render
+  const totalValue = React.useMemo(() => {
+    return filteredRows.reduce((acc, stock) => acc + (safeNum(stock.currentPrice) * safeNum(stock.holdings)), 0);
+  }, [filteredRows]);
 
-  const sectorData = filteredRows.reduce((acc, stock) => {
-    const sector = stock.sector || 'Uncategorized';
-    const marketValue = safeNum(stock.currentPrice) * safeNum(stock.holdings);
-    acc[sector] = (acc[sector] || 0) + marketValue;
-    return acc;
-  }, {});
+  const totalInvestedAmount = React.useMemo(() => {
+    return filteredRows.reduce((acc, stock) => acc + safeNum(stock.CI), 0);
+  }, [filteredRows]);
 
-  const baseChartData = Object.entries(sectorData)
-    .map(([name, value]) => ({ name, value, total: totalValue }))
-    .filter(entry => entry.value > 0)
-    .sort((a, b) => b.value - a.value);
+  const sectorData = React.useMemo(() => {
+    return filteredRows.reduce((acc, stock) => {
+      const sector = stock.sector || 'Uncategorized';
+      const marketValue = safeNum(stock.currentPrice) * safeNum(stock.holdings);
+      acc[sector] = (acc[sector] || 0) + marketValue;
+      return acc;
+    }, {});
+  }, [filteredRows]);
 
-  const investedChartData = filteredRows
-    .map(stock => ({
-      name: stock.symbol || 'N/A',
-      value: safeNum(stock.CI),
-      total: totalInvestedAmount
-    }))
-    .filter(e => e.value > 0)
-    .sort((a, b) => b.value - a.value);
+  const baseChartData = React.useMemo(() => {
+    return Object.entries(sectorData)
+      .map(([name, value]) => ({ name, value, total: totalValue }))
+      .filter(entry => entry.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [sectorData, totalValue]);
 
-  const ChartCard = ({ title, data, dataKey = 'value' }) => {
-    const [activeItems, setActiveItems] = useState(data.map(() => true));
+  const investedChartData = React.useMemo(() => {
+    return filteredRows
+      .map(stock => ({
+        name: stock.symbol || 'N/A',
+        value: safeNum(stock.CI),
+        total: totalInvestedAmount
+      }))
+      .filter(e => e.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [filteredRows, totalInvestedAmount]);
+
+  // ChartCard component - moved inside PortfolioCharts to leverage its state and data
+  const ChartCard = useCallback(({ title, data, dataKey = 'value' }) => {
+    // We'll manage activeItems locally within ChartCard, but reset it if data changes
+    const [activeItems, setActiveItems] = useState(() => data.map(() => true));
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+    // Reset activeItems whenever the data prop changes
+    useEffect(() => {
+      setActiveItems(data.map(() => true));
+      // Only set initial load to false after first data load
+      if (data.length > 0) {
+        setIsInitialLoad(false);
+      }
+    }, [data]);
+
     const toggleItem = (index) => {
       const updated = [...activeItems];
       updated[index] = !updated[index];
       setActiveItems(updated);
     };
+
     const visibleData = data.map((entry, index) => ({ ...entry, index })).filter((_, i) => activeItems[i]);
 
     if (!data.length) {
@@ -242,6 +266,7 @@ export default function PortfolioCharts({ rows = [] }) {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart margin={{ top: 40, right: 80, bottom: 40, left: 80 }}>
               <Pie
+                key={`pie-${title}`} // Stable key per chart
                 data={visibleData}
                 cx="50%"
                 cy="50%"
@@ -250,11 +275,14 @@ export default function PortfolioCharts({ rows = [] }) {
                 dataKey={dataKey}
                 labelLine={false}
                 label={showOuterLabels ? (props) => renderAdvancedLabel(props, labelMode, minPercentThreshold) : false}
-
+                isAnimationActive={!isInitialLoad} // Only animate after initial load
+                animationBegin={0}
+                animationDuration={600} // Shorter duration for smoother experience
+                animationEasing="ease-out"
               >
                 {visibleData.map((entry, i) => (
                   <Cell
-                    key={`cell-${entry.name}`}
+                    key={`cell-${entry.name}-${entry.value}`} // More stable key combining name and value
                     fill={COLORS[entry.index % COLORS.length]}
                     stroke="rgba(255,255,255,0.3)"
                     strokeWidth={2}
@@ -262,7 +290,8 @@ export default function PortfolioCharts({ rows = [] }) {
                 ))}
               </Pie>
               {showInnerLabels && (
-                <Pie
+                <Pie // A separate Pie for inner labels ensures they animate independently if desired
+                  key={`inner-pie-${title}`} // Stable key for inner pie
                   data={visibleData}
                   cx="50%"
                   cy="50%"
@@ -271,8 +300,9 @@ export default function PortfolioCharts({ rows = [] }) {
                   dataKey={dataKey}
                   labelLine={false}
                   label={(props) => renderInnerLabel(props, showInnerLabels, 8)}
-                  fill="transparent"
-                  stroke='transparent'
+                  fill="transparent" // Make this pie transparent
+                  stroke='transparent' // Make this pie transparent
+                  isAnimationActive={false} // Keep disabled to avoid label flickering
                 />
               )}
               <Tooltip content={<CustomTooltip />} />
@@ -322,162 +352,12 @@ export default function PortfolioCharts({ rows = [] }) {
         </Box>
       </Box>
     );
-  };
+  }, [labelMode, showInnerLabels, showOuterLabels, minPercentThreshold, COLORS]); // Dependencies for ChartCard memoization
 
   const hasData = baseChartData.length > 0 || investedChartData.length > 0;
 
   return (
     <Box sx={{ width: '100%', p: 3 }}>
-      <Box sx={{ mb: 3, textAlign: 'center' }}>
-        <Typography
-          variant="h4"
-          sx={{
-            color: 'white',
-            fontWeight: 800,
-            background: 'linear-gradient(45deg, #00C49F, #0088FE, #FFBB28)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            letterSpacing: '0.8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            mb: 3
-          }}
-        >
-          <Zap size={28} color="#f9a825" style={{ marginRight: 12 }} />
-          Portfolio Dashboard
-        </Typography>
-
-        {hasData && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-            {/* Category Filter */}
-            <ToggleButtonGroup
-              color="primary"
-              value={categoryFilter}
-              exclusive
-              onChange={(e, newValue) => newValue && setCategoryFilter(newValue)}
-              size="small"
-              sx={{
-                '& .MuiToggleButton-root': {
-                  color: 'rgba(255,255,255,0.8)',
-                  borderColor: 'rgba(255,255,255,0.3)',
-                  '&.Mui-selected': {
-                    backgroundColor: teal[600],
-                    color: 'white'
-                  }
-                }
-              }}
-            >
-              <ToggleButton value="ALL">All Holdings</ToggleButton>
-              <ToggleButton value="ETF">ETFs</ToggleButton>
-              <ToggleButton value="SATELLITES">Satellites</ToggleButton>
-            </ToggleButtonGroup>
-
-            {/* Label Controls */}
-            <Box sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 2,
-              alignItems: 'center',
-              p: 2,
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              borderRadius: 2,
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}>
-              {/* Label Mode Selector */}
-              <ButtonGroup size="small" variant="outlined">
-                {[
-                  //{ value: 'percentage', icon: Percent, label: '%' },
-                  //{ value: 'value', icon: DollarSign, label: '$' },
-                  //{ value: 'name', icon: Tag, label: 'Name' },
-                  //{ value: 'full', icon: Eye, label: 'Full' }
-                ].map(({ value, icon: Icon, label }) => (
-                  <Button
-                    key={value}
-                    onClick={() => setLabelMode(value)}
-                    variant={labelMode === value ? 'contained' : 'outlined'}
-                    startIcon={<Icon size={14} />}
-                    sx={{
-                      color: labelMode === value ? 'white' : 'rgba(255,255,255,0.7)',
-                      borderColor: 'rgba(255,255,255,0.3)',
-                      backgroundColor: labelMode === value ? teal[600] : 'transparent',
-                      fontSize: '0.75rem'
-                    }}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </ButtonGroup>
-
-              {/* Toggle Switches */}
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={showOuterLabels}
-                    onChange={(e) => setShowOuterLabels(e.target.checked)}
-                    size="small"
-                    sx={{ '& .MuiSwitch-thumb': { backgroundColor: teal[400] } }}
-                  />
-                }
-                label={<Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>Outer Labels</Typography>}
-              />
-
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={showInnerLabels}
-                    onChange={(e) => setShowInnerLabels(e.target.checked)}
-                    size="small"
-                    sx={{ '& .MuiSwitch-thumb': { backgroundColor: teal[400] } }}
-                  />
-                }
-                label={<Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>Inner Labels</Typography>}
-              />
-
-              {/* Threshold Selector */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                  Min %:
-                </Typography>
-                <ButtonGroup size="small">
-                  {/* New "All" button */}
-                  <Button
-                    onClick={() => setMinPercentThreshold(0)}
-                    variant={minPercentThreshold === 0 ? 'contained' : 'outlined'}
-                    sx={{
-                      minWidth: 35,
-                      color: minPercentThreshold === 0 ? 'white' : 'rgba(255,255,255,0.7)',
-                      borderColor: 'rgba(255,255,255,0.3)',
-                      backgroundColor: minPercentThreshold === 0 ? teal[600] : 'transparent',
-                      fontSize: '0.7rem'
-                    }}
-                  >
-                    All
-                  </Button>
-                  {[5, 10].map(threshold => (
-                    <Button
-                      key={threshold}
-                      onClick={() => setMinPercentThreshold(threshold)}
-                      variant={minPercentThreshold === threshold ? 'contained' : 'outlined'}
-                      sx={{
-                        minWidth: 35,
-                        color: minPercentThreshold === threshold ? 'white' : 'rgba(255,255,255,0.7)',
-                        borderColor: 'rgba(255,255,255,0.3)',
-                        backgroundColor: minPercentThreshold === threshold ? teal[600] : 'transparent',
-                        fontSize: '0.7rem'
-                      }}
-                    >
-                      {threshold}%
-                    </Button>
-                  ))}
-                </ButtonGroup>
-              </Box>
-            </Box>
-          </Box>
-        )}
-      </Box>
-
       <Box sx={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -485,6 +365,7 @@ export default function PortfolioCharts({ rows = [] }) {
         gap: theme.spacing(3),
         py: 2
       }}>
+        {/* Pass processed data to ChartCard */}
         <ChartCard title="🚀 Sector Mix" data={baseChartData} />
         <ChartCard title="⚡ Active Investments" data={investedChartData} />
       </Box>
