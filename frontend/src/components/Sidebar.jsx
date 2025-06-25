@@ -163,7 +163,7 @@ export default function Sidebar({
           background: 'linear-gradient(180deg, #1A1A1D 0%, #2D2D30 100%)',
           color: theme.palette.text.primary,
           border: 'none',
-          borderRadius: 0, // Explicitly set border radius to 0
+          borderRadius: 0,
           borderRight: '1px solid rgba(255, 255, 255, 0.05)',
           display: 'flex',
           flexDirection: 'column',
@@ -172,11 +172,10 @@ export default function Sidebar({
           top: 0,
           left: 0,
           height: '100vh',
-          overflow: 'auto',
+          overflow: 'hidden', // Change this to hidden to prevent double scrollbar
           zIndex: 1200,
-          transition: 'none', // Remove any transition effects
+          transition: 'none',
           '&:hover': {
-            // Override any hover effects
             background: 'linear-gradient(180deg, #1A1A1D 0%, #2D2D30 100%)',
             transform: 'none',
             boxShadow: 'none',
@@ -196,425 +195,447 @@ export default function Sidebar({
       variant="permanent"
       anchor="left"
     >
-      {/* Navigation List */}
-      <List sx={{ px: 1 }}>
-        {navItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-            <ListItemButton
-              component={NavLink}
-              to={item.path}
-              exact={String(item.path === '/')}
-              sx={{
-                borderRadius: '12px',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '3px',
-                  background: 'transparent',
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                },
-                '&.active': {
-                  background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.2) 0%, rgba(156, 39, 176, 0.1) 100%)',
-                  border: '1px solid rgba(0, 188, 212, 0.3)',
-                  '&::before': {
-                    background: `linear-gradient(180deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-                  },
-                  '& .MuiListItemIcon-root': {
-                    color: theme.palette.primary.main,
-                  },
-                  '& .MuiListItemText-primary': {
-                    color: theme.palette.text.primary,
-                    fontWeight: 600,
-                  },
-                },
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 188, 212, 0.08)',
-                  transform: 'translateX(4px)',
-                  '&::before': {
-                    background: `linear-gradient(180deg, ${theme.palette.primary.light} 0%, ${theme.palette.secondary.light} 100%)`,
-                  },
-                },
-              }}
-            >
-              <ListItemIcon sx={{
-                minWidth: 40,
-                color: theme.palette.text.secondary,
-                transition: 'color 0.2s ease'
-              }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText
-                primary={item.text}
-                sx={{
-                  '& .MuiListItemText-primary': {
-                    color: theme.palette.text.secondary,
-                    fontSize: '0.8rem',
-                    fontWeight: 500,
-                    transition: 'all 0.2s ease'
-                  }
-                }}
-              />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
-
-      <Divider sx={{ bgcolor: 'rgba(255, 255, 255, 0.06)' }} />
-
-      {/* Portfolio Summary */}
-      {isDataLoaded && (
+      {/* Main scrollable content area */}
+      <Box sx={{
+        flex: 1,
+        overflow: 'auto', // This enables scrolling
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 0, // Important: allows flex child to shrink below content size
+      }}>
         <Box sx={{
-          p: 1,
-          my: 1,
-          background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.1) 0%, rgba(156, 39, 176, 0.1) 100%)',
-          borderRadius: '16px',
-          margin: '16px 12px',
-          border: '1px solid rgba(0, 188, 212, 0.2)',
-          backdropFilter: 'blur(10px)',
-          position: 'relative',
-          overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '1px',
-            background: 'linear-gradient(90deg, transparent, rgba(0, 188, 212, 0.6), transparent)',
-          }
+          flex: 1, // Takes available space
+          px: 0, // Remove any padding that might interfere
         }}>
-          <Typography
-            variant="caption"
-            sx={{
-              color: theme.palette.text.primary,
-              fontWeight: 600,
-              display: 'block',
-              textAlign: 'center',
-              mb: 1.5,
-              fontSize: '0.8rem'
-            }}
-          >
-            Portfolio Summary
-          </Typography>
-
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {/* Total Value */}
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              p: 1,
-              borderRadius: '8px',
-              background: 'rgba(0, 0, 0, 0.2)',
-              border: '1px solid rgba(255, 255, 255, 0.05)'
-            }}>
-              <Box sx={{
-                p: 0,
-                borderRadius: '6px',
-                background: 'rgba(0, 188, 212, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <DollarSign size={14} color={theme.palette.primary.main} />
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <Typography sx={{
-                  fontWeight: 700,
-                  color: theme.palette.text.primary,
-                  fontSize: '0.8rem',
-                  fontFamily: 'monospace'
-                }}>
-                  {formatCurrency(totalValue)}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* Total P/L */}
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              p: 1,
-              borderRadius: '8px',
-              background: 'rgba(0, 0, 0, 0.2)',
-              border: `1px solid ${totalPL >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
-            }}>
-              <Box sx={{
-                p: 0,
-                borderRadius: '6px',
-                background: totalPL >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                {totalPL >= 0 ?
-                  <TrendingUp size={14} color={theme.palette.success.main} /> :
-                  <TrendingDown size={14} color={theme.palette.error.main} />
-                }
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Typography sx={{
-                    fontWeight: 700,
-                    color: totalPL >= 0 ? theme.palette.success.main : theme.palette.error.main,
-                    fontSize: '0.8rem',
-                    fontFamily: 'monospace'
-                  }}
-                    component="div" >
-                    {`${totalPL >= 0 ? '+' : ''}${formatCurrency(totalPL)} `}
-                    <Chip
-                      label={`${safeNum(totalPLPct).toFixed(2)}%`}
-                      size="small"
-                      sx={{
-                        height: '18px',
-                        fontSize: '0.7rem',
+          {/* Navigation List */}
+          <List sx={{ px: 1 }}>
+            {navItems.map((item) => (
+              <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton
+                  component={NavLink}
+                  to={item.path}
+                  exact={String(item.path === '/')}
+                  sx={{
+                    borderRadius: '12px',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '3px',
+                      background: 'transparent',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    },
+                    '&.active': {
+                      background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.2) 0%, rgba(156, 39, 176, 0.1) 100%)',
+                      border: '1px solid rgba(0, 188, 212, 0.3)',
+                      '&::before': {
+                        background: `linear-gradient(180deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+                      },
+                      '& .MuiListItemIcon-root': {
+                        color: theme.palette.primary.main,
+                      },
+                      '& .MuiListItemText-primary': {
+                        color: theme.palette.text.primary,
                         fontWeight: 600,
-                        backgroundColor: totalPL >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                      },
+                    },
+                    '&:hover': {
+                      backgroundColor: 'rgba(0, 188, 212, 0.08)',
+                      transform: 'translateX(4px)',
+                      '&::before': {
+                        background: `linear-gradient(180deg, ${theme.palette.primary.light} 0%, ${theme.palette.secondary.light} 100%)`,
+                      },
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{
+                    minWidth: 40,
+                    color: theme.palette.text.secondary,
+                    transition: 'color 0.2s ease'
+                  }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    sx={{
+                      '& .MuiListItemText-primary': {
+                        color: theme.palette.text.secondary,
+                        fontSize: '0.8rem',
+                        fontWeight: 500,
+                        transition: 'all 0.2s ease'
+                      }
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+
+          <Divider sx={{ bgcolor: 'rgba(255, 255, 255, 0.06)' }} />
+
+          {/* Portfolio Summary */}
+          {isDataLoaded && (
+            <Box sx={{
+              p: 1,
+              my: 1,
+              background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.1) 0%, rgba(156, 39, 176, 0.1) 100%)',
+              borderRadius: '16px',
+              margin: '16px 12px',
+              border: '1px solid rgba(0, 188, 212, 0.2)',
+              backdropFilter: 'blur(10px)',
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '1px',
+                background: 'linear-gradient(90deg, transparent, rgba(0, 188, 212, 0.6), transparent)',
+              }
+            }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: theme.palette.text.primary,
+                  fontWeight: 600,
+                  display: 'block',
+                  textAlign: 'center',
+                  mb: 1.5,
+                  fontSize: '0.8rem'
+                }}
+              >
+                Portfolio Summary
+              </Typography>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {/* Total Value */}
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  p: 1,
+                  borderRadius: '8px',
+                  background: 'rgba(0, 0, 0, 0.2)',
+                  border: '1px solid rgba(255, 255, 255, 0.05)'
+                }}>
+                  <Box sx={{
+                    p: 0,
+                    borderRadius: '6px',
+                    background: 'rgba(0, 188, 212, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <DollarSign size={14} color={theme.palette.primary.main} />
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography sx={{
+                      fontWeight: 700,
+                      color: theme.palette.text.primary,
+                      fontSize: '0.8rem',
+                      fontFamily: 'monospace'
+                    }}>
+                      {formatCurrency(totalValue)}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* Total P/L */}
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  p: 1,
+                  borderRadius: '8px',
+                  background: 'rgba(0, 0, 0, 0.2)',
+                  border: `1px solid ${totalPL >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+                }}>
+                  <Box sx={{
+                    p: 0,
+                    borderRadius: '6px',
+                    background: totalPL >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    {totalPL >= 0 ?
+                      <TrendingUp size={14} color={theme.palette.success.main} /> :
+                      <TrendingDown size={14} color={theme.palette.error.main} />
+                    }
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography sx={{
+                        fontWeight: 700,
                         color: totalPL >= 0 ? theme.palette.success.main : theme.palette.error.main,
-                        border: `1px solid ${totalPL >= 0 ? theme.palette.success.main : theme.palette.error.main}`,
+                        fontSize: '0.8rem',
+                        fontFamily: 'monospace'
                       }}
-                    />
-                  </Typography>
+                        component="div" >
+                        {`${totalPL >= 0 ? '$' : ''}${formatCurrency(totalPL)} `}
+                        <Chip
+                          label={`${safeNum(totalPLPct).toFixed(2)}%`}
+                          size="small"
+                          sx={{
+                            height: '18px',
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            backgroundColor: totalPL >= 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                            color: totalPL >= 0 ? theme.palette.success.main : theme.palette.error.main,
+                            border: `1px solid ${totalPL >= 0 ? theme.palette.success.main : theme.palette.error.main}`,
+                          }}
+                        />
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Box>
               </Box>
             </Box>
-          </Box>
-        </Box>
-      )}
+          )}
 
 
-      {/* Data Management Section */}
-      <Divider sx={{ bgcolor: 'rgba(255, 255, 255, 0.06)', my: 2 }} />
+          {/* Data Management Section */}
+          <Divider sx={{ bgcolor: 'rgba(255, 255, 255, 0.06)', my: 2 }} />
 
-      <Box sx={{
-        p: 2,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 2,
-        background: 'rgba(0, 0, 0, 0.2)',
-        borderRadius: '16px',
-        margin: '0 12px 16px',
-        border: '1px solid rgba(255, 255, 255, 0.05)',
-      }}>
-        <FileUpload onUpload={onUploadAssets} isDataLoaded={isDataLoaded} isLoading={isLoading} />
-
-        {isDataLoaded && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', gap: 1 }}>
-            <IconButton
-              onClick={onRefreshData}
-              disabled={isLoading}
-              sx={{
-                background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.2) 0%, rgba(0, 151, 167, 0.2) 100%)',
-                color: theme.palette.primary.main,
-                border: '1px solid rgba(0, 188, 212, 0.3)',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.3) 0%, rgba(0, 151, 167, 0.3) 100%)',
-                  transform: 'translateY(-1px)',
-                  boxShadow: '0px 4px 12px rgba(0, 188, 212, 0.3)'
-                },
-                '&:disabled': {
-                  opacity: 0.5,
-                  transform: 'none'
-                }
-              }}
-            >
-              {isLoading ? (
-                <CircularProgress
-                  size={20}
-                  sx={{ color: theme.palette.primary.main }}
-                />
-              ) : (
-                <RefreshIcon fontSize="small" />
-              )}
-            </IconButton>
-
-            <IconButton
-              onClick={onClearData}
-              sx={{
-                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%)',
-                color: theme.palette.error.main,
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(220, 38, 38, 0.3) 100%)',
-                  transform: 'translateY(-1px)',
-                  boxShadow: '0px 4px 12px rgba(239, 68, 68, 0.3)'
-                }
-              }}
-            >
-              <ClearIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        )}
-      </Box>
-
-
-
-      <Divider sx={{ bgcolor: 'rgba(255, 255, 255, 0.06)' }} />
-      {/* Bible Verse */}
-      <Box sx={{
-        p: 1,
-        my: 1,
-        background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.1) 0%, rgba(156, 39, 176, 0.1) 100%)',
-        borderRadius: '16px',
-        margin: '16px 12px',
-        border: '1px solid rgba(255, 255, 255, 0.05)',
-        backdropFilter: 'blur(10px)',
-      }}>
-        <Typography
-          variant="caption"
-          noWrap={false}
-          component="div"
-          sx={{
-            fontWeight: 500,
-            color: theme.palette.text.secondary,
-            fontSize: '0.7rem',
-            textAlign: 'center',
-            p: 1,
-          }}
-        >
-          "Mirad, y guardaos de toda avaricia;<br />porque la vida del hombre no consiste en la abundancia de los bienes que posee."<br />
-          <span style={{
-            fontSize: '0.7rem',
-            display: 'block',
-            marginTop: '8px',
-            fontStyle: 'italic',
-            color: theme.palette.primary.main,
-            fontWeight: 600
-          }}>
-            — Lucas 12:15 (RV1960)
-          </span>
-        </Typography>
-      </Box>
-
-      <Divider sx={{
-        bgcolor: 'rgba(255, 255, 255, 0.06)',
-        boxShadow: '0px 1px 0px rgba(0, 188, 212, 0.1)'
-      }} />
-
-      {/* Market Holidays Section */}
-      <Box sx={{
-        p: 1,
-        my: 1,
-        background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.1) 0%, rgba(156, 39, 176, 0.1) 100%)',
-        borderRadius: '16px',
-        margin: '16px 12px',
-        border: '1px solid rgba(255, 255, 255, 0.05)',
-        backdropFilter: 'blur(10px)',
-      }}>
-        {loadingHolidays ? (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, py: 1 }}>
-            <CircularProgress size={16} sx={{ color: theme.palette.primary.main }} />
-            <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-              Loading holidays...
-            </Typography>
-          </Box>
-        ) : holidayError ? (
-          <Alert
-            severity="error"
-            sx={{
-              fontSize: '0.7rem',
-              py: 0.5,
-              px: 1,
-              bgcolor: 'rgba(239, 68, 68, 0.1)',
-              color: theme.palette.error.main,
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-              borderRadius: '8px',
-              '& .MuiAlert-icon': {
-                color: theme.palette.error.main
+          <Box sx={{
+              p: 1,
+              my: 1,
+              background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.1) 0%, rgba(156, 39, 176, 0.1) 100%)',
+              borderRadius: '16px',
+              margin: '16px 12px',
+              border: '1px solid rgba(0, 188, 212, 0.2)',
+              backdropFilter: 'blur(10px)',
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '1px',
+                background: 'linear-gradient(90deg, transparent, rgba(0, 188, 212, 0.6), transparent)',
               }
-            }}
-          >
-            {holidayError}
-          </Alert>
-        ) : (
-          <>
-            {marketHolidays.length > 0 ? (
-              <Box>
-                <Typography
-                  variant="caption"
+            }}>
+            <FileUpload onUpload={onUploadAssets} isDataLoaded={isDataLoaded} isLoading={isLoading} />
+
+            {isDataLoaded && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', gap: 1 }}>
+                <IconButton
+                  onClick={onRefreshData}
+                  disabled={isLoading}
                   sx={{
-                    color: theme.palette.text.primary,
-                    fontWeight: 600,
-                    display: 'block',
-                    textAlign: 'center',
-                    mb: 1,
-                    fontSize: '0.8rem'
+                    background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.2) 0%, rgba(0, 151, 167, 0.2) 100%)',
+                    color: theme.palette.primary.main,
+                    border: '1px solid rgba(0, 188, 212, 0.3)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.3) 0%, rgba(0, 151, 167, 0.3) 100%)',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0px 4px 12px rgba(0, 188, 212, 0.3)'
+                    },
+                    '&:disabled': {
+                      opacity: 0.5,
+                      transform: 'none'
+                    }
                   }}
                 >
-                  Market Holidays
-                </Typography>
-                <List dense sx={{ p: 0 }}>
-                  {marketHolidays.slice(0, 3).map((holiday, index) => (
-                    <ListItem
-                      key={index}
-                      sx={{
-                        p: 0,
-                        m: 0,
-                        borderRadius: '8px',
-                        '&:hover': {
-                          backgroundColor: 'rgba(0, 188, 212, 0.05)',
-                        }
-                      }}
-                    >
-                      <ListItemIcon sx={{ minWidth: 28 }}>
-                        <EventAvailableIcon
-                          fontSize="small"
-                          sx={{ color: theme.palette.primary.main }}
-                        />
-                      </ListItemIcon>
-                      <ListItemText
-                        /*primary={
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: theme.palette.text.secondary,
-                              lineHeight: 1.3,
-                              fontSize: '0.7rem'
-                            }}
-                          >
-                            {holiday.eventName}
-                          </Typography>
-                        }*/
-                        secondary={
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: theme.palette.primary.light,
-                              fontSize: '0.7rem',
-                              fontWeight: 500
-                            }}
-                          >
-                            {moment(holiday.atDate).format('MMM D, YYYY')}
-                          </Typography>
-                        }
-                        sx={{ my: 0 }}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            ) : (
-              <Box sx={{ py: 1, textAlign: 'center' }}>
-                <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
-                  No upcoming U.S. market holidays.
-                </Typography>
+                  {isLoading ? (
+                    <CircularProgress
+                      size={20}
+                      sx={{ color: theme.palette.primary.main }}
+                    />
+                  ) : (
+                    <RefreshIcon fontSize="small" />
+                  )}
+                </IconButton>
+
+                <IconButton
+                  onClick={onClearData}
+                  sx={{
+                    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%)',
+                    color: theme.palette.error.main,
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(220, 38, 38, 0.3) 100%)',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0px 4px 12px rgba(239, 68, 68, 0.3)'
+                    }
+                  }}
+                >
+                  <ClearIcon fontSize="small" />
+                </IconButton>
               </Box>
             )}
-          </>
-        )}
+          </Box>
+
+
+
+          <Divider sx={{ bgcolor: 'rgba(255, 255, 255, 0.06)' }} />
+          {/* Bible Verse */}
+          <Box sx={{
+            p: 1,
+            my: 1,
+            background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.1) 0%, rgba(156, 39, 176, 0.1) 100%)',
+            borderRadius: '16px',
+            margin: '16px 12px',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(10px)',
+          }}>
+            <Typography
+              variant="caption"
+              noWrap={false}
+              component="div"
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.text.secondary,
+                fontSize: '0.7rem',
+                textAlign: 'center',
+                p: 1,
+              }}
+            >
+              "Mirad, y guardaos de toda avaricia;<br />porque la vida del hombre no consiste en la abundancia de los bienes que posee."<br />
+              <span style={{
+                fontSize: '0.7rem',
+                display: 'block',
+                marginTop: '8px',
+                fontStyle: 'italic',
+                color: theme.palette.primary.main,
+                fontWeight: 600
+              }}>
+                — Lucas 12:15 (RV1960)
+              </span>
+            </Typography>
+          </Box>
+
+          <Divider sx={{
+            bgcolor: 'rgba(255, 255, 255, 0.06)',
+            boxShadow: '0px 1px 0px rgba(0, 188, 212, 0.1)'
+          }} />
+
+          {/* Market Holidays Section */}
+          <Box sx={{
+            p: 1,
+            my: 1,
+            background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.1) 0%, rgba(156, 39, 176, 0.1) 100%)',
+            borderRadius: '16px',
+            margin: '16px 12px',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(10px)',
+          }}>
+            {loadingHolidays ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, py: 1 }}>
+                <CircularProgress size={16} sx={{ color: theme.palette.primary.main }} />
+                <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
+                  Loading holidays...
+                </Typography>
+              </Box>
+            ) : holidayError ? (
+              <Alert
+                severity="error"
+                sx={{
+                  fontSize: '0.7rem',
+                  py: 0.5,
+                  px: 1,
+                  bgcolor: 'rgba(239, 68, 68, 0.1)',
+                  color: theme.palette.error.main,
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  borderRadius: '8px',
+                  '& .MuiAlert-icon': {
+                    color: theme.palette.error.main
+                  }
+                }}
+              >
+                {holidayError}
+              </Alert>
+            ) : (
+              <>
+                {marketHolidays.length > 0 ? (
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: theme.palette.text.primary,
+                        fontWeight: 600,
+                        display: 'block',
+                        textAlign: 'center',
+                        mb: 1,
+                        fontSize: '0.8rem'
+                      }}
+                    >
+                      Market Holidays
+                    </Typography>
+                    <List dense sx={{ p: 0 }}>
+                      {marketHolidays.slice(0, 3).map((holiday, index) => (
+                        <ListItem
+                          key={index}
+                          sx={{
+                            p: 0,
+                            m: 0,
+                            borderRadius: '8px',
+                            '&:hover': {
+                              backgroundColor: 'rgba(0, 188, 212, 0.05)',
+                            }
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 28 }}>
+                            <EventAvailableIcon
+                              fontSize="small"
+                              sx={{ color: theme.palette.primary.main }}
+                            />
+                          </ListItemIcon>
+                          <ListItemText
+                            /*primary={
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: theme.palette.text.secondary,
+                                  lineHeight: 1.3,
+                                  fontSize: '0.7rem'
+                                }}
+                              >
+                                {holiday.eventName}
+                              </Typography>
+                            }*/
+                            secondary={
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: theme.palette.primary.light,
+                                  fontSize: '0.7rem',
+                                  fontWeight: 500
+                                }}
+                              >
+                                {moment(holiday.atDate).format('MMM D, YYYY')}
+                              </Typography>
+                            }
+                            sx={{ my: 0 }}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Box>
+                ) : (
+                  <Box sx={{ py: 1, textAlign: 'center' }}>
+                    <Typography variant="caption" sx={{ color: theme.palette.text.secondary }}>
+                      No upcoming U.S. market holidays.
+                    </Typography>
+                  </Box>
+                )}
+              </>
+            )}
+          </Box>
+
+        </Box>
       </Box>
-
-
       {/* Footer */}
       <Box sx={{
         p: 2,

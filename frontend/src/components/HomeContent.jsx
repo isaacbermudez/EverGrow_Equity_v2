@@ -34,27 +34,7 @@ export default function HomeContent({ data, handleAssets }) {
 
       {/* Section for PortfolioAssets */}
       <Grid container spacing={3} sx={{ width: '100%' }}>
-        <Grid item xs={12}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              width: '100%',
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
-              backdropFilter: 'blur(15px)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 3,
-              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: '0 15px 30px rgba(0,0,0,0.25)',
-                border: '1px solid rgba(255,255,255,0.2)'
-              }
-            }}
-          >
             <PortfolioAssets rows={data} />
-          </Paper>
-        </Grid>
       </Grid>
     </Container>
   );

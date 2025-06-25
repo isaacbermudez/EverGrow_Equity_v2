@@ -128,7 +128,7 @@ export default function FileUpload({ onUpload, isDataLoaded, isLoading: propIsLo
           onDrop={handleDrop}
           sx={{
             p: 1.5,
-            border: isDragOver ? '2px dashed #00C49F' : '2px dashed rgba(255,255,255,0.5)',
+            border: isDragOver ? '2px dashed #00BCD4' : '2px dashed rgba(255,255,255,0.5)',
             backgroundColor: isDragOver ? theme.palette.background.paper : 'transparent', // Use theme color
             textAlign: 'center',
             cursor: isLoading ? 'not-allowed' : 'pointer',

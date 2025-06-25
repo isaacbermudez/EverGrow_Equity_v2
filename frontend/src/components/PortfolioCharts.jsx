@@ -250,6 +250,7 @@ export default function PortfolioCharts({ rows = [] }) {
                 dataKey={dataKey}
                 labelLine={false}
                 label={showOuterLabels ? (props) => renderAdvancedLabel(props, labelMode, minPercentThreshold) : false}
+                
               >
                 {visibleData.map((entry, i) => (
                   <Cell
@@ -271,6 +272,7 @@ export default function PortfolioCharts({ rows = [] }) {
                   labelLine={false}
                   label={(props) => renderInnerLabel(props, showInnerLabels, 8)}
                   fill="transparent"
+                  stroke='transparent'
                 />
               )}
               <Tooltip content={<CustomTooltip />} />
