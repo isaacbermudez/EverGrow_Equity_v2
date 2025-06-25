@@ -250,7 +250,7 @@ export default function PortfolioCharts({ rows = [] }) {
                 dataKey={dataKey}
                 labelLine={false}
                 label={showOuterLabels ? (props) => renderAdvancedLabel(props, labelMode, minPercentThreshold) : false}
-                
+
               >
                 {visibleData.map((entry, i) => (
                   <Cell
@@ -485,8 +485,8 @@ export default function PortfolioCharts({ rows = [] }) {
         gap: theme.spacing(3),
         py: 2
       }}>
-        <ChartCard title="📊 Sector Allocation" data={baseChartData} />
-        <ChartCard title="💰 Investment Distribution" data={investedChartData} />
+        <ChartCard title="🚀 Sector Mix" data={baseChartData} />
+        <ChartCard title="⚡ Active Investments" data={investedChartData} />
       </Box>
     </Box>
   );

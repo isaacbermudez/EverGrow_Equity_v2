@@ -133,10 +133,7 @@ export default function TransactionsSection({ transactions = [] }) {
       return null;
     }
 
-    let displayValue;
-    if (value >= 1000000) displayValue = `$${(value / 1000000).toFixed(1)}M`;
-    else if (value >= 1000) displayValue = `$${(value / 1000).toFixed(0)}K`;
-    else displayValue = formatCurrency(value);
+    let displayValue = formatCurrency(value);
 
     return (
       <text
