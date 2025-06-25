@@ -1,5 +1,5 @@
 // src/components/PortfolioCharts.jsx
-import React, { useState, useEffect, useCallback } from 'react'; // Import useCallback
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -45,20 +45,6 @@ const renderAdvancedLabel = ({
       labelText = name.length > 5 ? `${name.substring(0, 10)}...` : name;
       subText = `$${Math.ceil(value)}`;
       break;
-    /* case 'percentage':
-       labelText = `${(percent * 100).toFixed(1)}%`;
-       break;
-     case 'value':
-       labelText = `$${(value / 1000).toFixed(0)}K`;
-       break;
-     case 'nameValue':
-       labelText = name;
-       subText = `$${(value / 1000).toFixed(0)}K`;
-       break;
-     case 'full':
-       labelText = `${(percent * 100).toFixed(1)}%`;
-       subText = `$${(value / 1000).toFixed(0)}K`;
-       break;*/
     default:
       labelText = `${(percent * 100).toFixed(1)}%`;
   }
@@ -82,10 +68,10 @@ const renderAdvancedLabel = ({
       {/* Label background - dynamic width */}
       <rect
         x={isLeft ? x - textWidth : x}
-        y={subText ? y - 16 : y - 8} // Adjust Y position based on subtext
+        y={subText ? y - 16 : y - 8}
         width={textWidth}
-        height={subText ? "30" : "20"} // Adjust height based on subtext
-        fill="rgba(0, 0, 0, 0.85)" // Slightly darker for better contrast
+        height={subText ? "30" : "20"}
+        fill="rgba(0, 0, 0, 0.85)"
         rx="4"
         stroke="rgba(255,255,255,0.2)"
         strokeWidth="1"
@@ -94,10 +80,10 @@ const renderAdvancedLabel = ({
       {/* Main label text */}
       <text
         x={isLeft ? x - textWidth / 2 : x + textWidth / 2}
-        y={subText ? y - 6 : y} // Adjust Y position for main text
+        y={subText ? y - 6 : y}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize="12" // Slightly larger font for readability
+        fontSize="12"
         fontWeight="600"
         fill="white"
       >
@@ -108,10 +94,10 @@ const renderAdvancedLabel = ({
       {subText && (
         <text
           x={isLeft ? x - textWidth / 2 : x + textWidth / 2}
-          y={y + 8} // Adjust Y position for subtext
+          y={y + 8}
           textAnchor="middle"
           dominantBaseline="middle"
-          fontSize="10" // Slightly larger font for readability
+          fontSize="10"
           fill="#FFBB28"
           fontWeight="500"
         >
@@ -150,7 +136,7 @@ const renderInnerLabel = ({
   );
 };
 
-// Custom Tooltip component - no changes needed here, looks good.
+// Custom Tooltip component
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
@@ -179,17 +165,15 @@ const CustomTooltip = ({ active, payload }) => {
 
 export default function PortfolioCharts({ rows = [] }) {
   const theme = useTheme();
-  // Fixed values instead of state - you can change these defaults as needed
-  const labelMode = 'name'; // Default label mode
-  const showInnerLabels = true; // Show inner labels by default
-  const showOuterLabels = true; // Show outer labels by default
-  const minPercentThreshold = 0; // Show all segments by default
+  const labelMode = 'name';
+  const showInnerLabels = true;
+  const showOuterLabels = true;
+  const minPercentThreshold = 0;
 
-  // Use filteredRows directly, no local filtering needed based on categoryFilter anymore.
-  const filteredRows = rows; // 'rows' prop already comes filtered from HomeContent
+  const filteredRows = rows;
 
-  // Memoize data calculations to prevent unnecessary re-calculations on every render
-  const totalValue = React.useMemo(() => {
+  // FIXED: Both charts now use the same calculation method (current market value)
+  const totalMarketValue = React.useMemo(() => {
     return filteredRows.reduce((acc, stock) => acc + (safeNum(stock.currentPrice) * safeNum(stock.holdings)), 0);
   }, [filteredRows]);
 
@@ -197,6 +181,7 @@ export default function PortfolioCharts({ rows = [] }) {
     return filteredRows.reduce((acc, stock) => acc + safeNum(stock.CI), 0);
   }, [filteredRows]);
 
+  // Sector breakdown by current market value
   const sectorData = React.useMemo(() => {
     return filteredRows.reduce((acc, stock) => {
       const sector = stock.sector || 'Uncategorized';
@@ -206,14 +191,42 @@ export default function PortfolioCharts({ rows = [] }) {
     }, {});
   }, [filteredRows]);
 
-  const baseChartData = React.useMemo(() => {
+  // Individual stock breakdown by current market value
+  const stockData = React.useMemo(() => {
+    return filteredRows.reduce((acc, stock) => {
+      const symbol = stock.symbol || 'N/A';
+      const marketValue = safeNum(stock.currentPrice) * safeNum(stock.holdings);
+      acc[symbol] = (acc[symbol] || 0) + marketValue;
+      return acc;
+    }, {});
+  }, [filteredRows]);
+
+  const sectorChartData = React.useMemo(() => {
     return Object.entries(sectorData)
-      .map(([name, value]) => ({ name, value, total: totalValue }))
+      .map(([name, value]) => ({ name, value, total: totalMarketValue }))
       .filter(entry => entry.value > 0)
       .sort((a, b) => b.value - a.value);
-  }, [sectorData, totalValue]);
+  }, [sectorData, totalMarketValue]);
 
-  const investedChartData = React.useMemo(() => {
+  // FIXED: Now using current market value instead of cost basis
+  const stockChartData = React.useMemo(() => {
+    return Object.entries(stockData)
+      .map(([name, value]) => ({ name, value, total: totalMarketValue }))
+      .filter(entry => entry.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [stockData, totalMarketValue]);
+
+  // Optional: Add cost basis charts if you want to show both
+  const costBasisSectorData = React.useMemo(() => {
+    return filteredRows.reduce((acc, stock) => {
+      const sector = stock.sector || 'Uncategorized';
+      const costBasis = safeNum(stock.CI);
+      acc[sector] = (acc[sector] || 0) + costBasis;
+      return acc;
+    }, {});
+  }, [filteredRows]);
+
+  const costBasisStockData = React.useMemo(() => {
     return filteredRows
       .map(stock => ({
         name: stock.symbol || 'N/A',
@@ -224,16 +237,20 @@ export default function PortfolioCharts({ rows = [] }) {
       .sort((a, b) => b.value - a.value);
   }, [filteredRows, totalInvestedAmount]);
 
-  // ChartCard component - moved inside PortfolioCharts to leverage its state and data
+  const costBasisSectorChartData = React.useMemo(() => {
+    return Object.entries(costBasisSectorData)
+      .map(([name, value]) => ({ name, value, total: totalInvestedAmount }))
+      .filter(entry => entry.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [costBasisSectorData, totalInvestedAmount]);
+
+  // ChartCard component
   const ChartCard = useCallback(({ title, data, dataKey = 'value' }) => {
-    // We'll manage activeItems locally within ChartCard, but reset it if data changes
     const [activeItems, setActiveItems] = useState(() => data.map(() => true));
     const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-    // Reset activeItems whenever the data prop changes
     useEffect(() => {
       setActiveItems(data.map(() => true));
-      // Only set initial load to false after first data load
       if (data.length > 0) {
         setIsInitialLoad(false);
       }
@@ -251,7 +268,7 @@ export default function PortfolioCharts({ rows = [] }) {
       return (
         <Box sx={{ flex: 1, minWidth: 320, maxWidth: 600, p: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5 }}>
           <Box sx={{ textAlign: 'center', opacity: 0.5 }}>
-            <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
+            <Typography variant="h6" sx={{ color: 'white', opacity: 0.5 }}>No Data Available</Typography>
           </Box>
         </Box>
       );
@@ -266,7 +283,7 @@ export default function PortfolioCharts({ rows = [] }) {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart margin={{ top: 40, right: 80, bottom: 40, left: 80 }}>
               <Pie
-                key={`pie-${title}`} // Stable key per chart
+                key={`pie-${title}`}
                 data={visibleData}
                 cx="50%"
                 cy="50%"
@@ -275,14 +292,14 @@ export default function PortfolioCharts({ rows = [] }) {
                 dataKey={dataKey}
                 labelLine={false}
                 label={showOuterLabels ? (props) => renderAdvancedLabel(props, labelMode, minPercentThreshold) : false}
-                isAnimationActive={!isInitialLoad} // Only animate after initial load
+                isAnimationActive={!isInitialLoad}
                 animationBegin={0}
-                animationDuration={600} // Shorter duration for smoother experience
+                animationDuration={600}
                 animationEasing="ease-out"
               >
                 {visibleData.map((entry, i) => (
                   <Cell
-                    key={`cell-${entry.name}-${entry.value}`} // More stable key combining name and value
+                    key={`cell-${entry.name}-${entry.value}`}
                     fill={COLORS[entry.index % COLORS.length]}
                     stroke="rgba(255,255,255,0.3)"
                     strokeWidth={2}
@@ -290,8 +307,8 @@ export default function PortfolioCharts({ rows = [] }) {
                 ))}
               </Pie>
               {showInnerLabels && (
-                <Pie // A separate Pie for inner labels ensures they animate independently if desired
-                  key={`inner-pie-${title}`} // Stable key for inner pie
+                <Pie
+                  key={`inner-pie-${title}`}
                   data={visibleData}
                   cx="50%"
                   cy="50%"
@@ -300,9 +317,9 @@ export default function PortfolioCharts({ rows = [] }) {
                   dataKey={dataKey}
                   labelLine={false}
                   label={(props) => renderInnerLabel(props, showInnerLabels, 8)}
-                  fill="transparent" // Make this pie transparent
-                  stroke='transparent' // Make this pie transparent
-                  isAnimationActive={false} // Keep disabled to avoid label flickering
+                  fill="transparent"
+                  stroke='transparent'
+                  isAnimationActive={false}
                 />
               )}
               <Tooltip content={<CustomTooltip />} />
@@ -352,9 +369,7 @@ export default function PortfolioCharts({ rows = [] }) {
         </Box>
       </Box>
     );
-  }, [labelMode, showInnerLabels, showOuterLabels, minPercentThreshold, COLORS]); // Dependencies for ChartCard memoization
-
-  const hasData = baseChartData.length > 0 || investedChartData.length > 0;
+  }, [labelMode, showInnerLabels, showOuterLabels, minPercentThreshold, COLORS]);
 
   return (
     <Box sx={{ width: '100%', p: 3 }}>
@@ -363,11 +378,11 @@ export default function PortfolioCharts({ rows = [] }) {
         flexWrap: 'wrap',
         justifyContent: 'center',
         gap: theme.spacing(3),
-        py: 2
+        py: 2,
+        mb: 4
       }}>
-        {/* Pass processed data to ChartCard */}
-        <ChartCard title="🚀 Sector Mix" data={baseChartData} />
-        <ChartCard title="⚡ Active Investments" data={investedChartData} />
+        <ChartCard title="🚀 Sector Mix" data={sectorChartData} />
+        <ChartCard title="⚡ Active Investments" data={stockChartData} />
       </Box>
     </Box>
   );

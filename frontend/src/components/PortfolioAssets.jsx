@@ -84,43 +84,35 @@ export default function PortfolioAssets({ rows = [] }) {
               setCurrentPage(newPage);
             }
           }}
+          size="small"
           sx={{
             '& .MuiToggleButton-root': {
+              color: 'rgba(255,255,255,0.9)',
               transition: 'all 0.3s ease',
-              '&:hover': {
-                backgroundColor: 'transparent',
-                color: 'inherit',
-                borderColor: 'inherit'
-              },
               '&.Mui-selected': {
-                background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.4) 0%, rgba(156, 39, 176, 0.4) 100%)',
+                background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.8) 0%, rgba(156, 39, 176, 0.8) 100%)',
                 color: 'white',
-                borderColor: 'transparent',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, rgba(0, 188, 212, 0.4) 0%, rgba(156, 39, 176, 0.4) 100%)',
-                  color: 'white',
-                  borderColor: 'transparent'
-                }
+                boxShadow: '0 4px 12px rgba(0, 188, 212, 0.3)'
               }
             }
           }}
         >
-          <ToggleButton value="all">
-            All ({positivePLStocks.length + negativePLStocks.length})
-          </ToggleButton>
-          {positivePLStocks.length > 0 && (
-            <ToggleButton value={0}>
-              <TrendingUp /> ({positivePLStocks.length})
+            <ToggleButton value="all">
+              All ({positivePLStocks.length + negativePLStocks.length})
             </ToggleButton>
-          )}
-          {negativePLStocks.length > 0 && (
-            <ToggleButton value={1}>
-              <TrendingDown />({negativePLStocks.length})
-            </ToggleButton>
-          )}
-        </ToggleButtonGroup>
+            {positivePLStocks.length > 0 && (
+              <ToggleButton value={0} sx={{ color: '#00FF00 !important' }}>
+                <TrendingUp /> ({positivePLStocks.length})
+              </ToggleButton>
+            )}
+            {negativePLStocks.length > 0 && (
+              <ToggleButton value={1} sx={{ color: '#FF0000 !important' }}>
+                <TrendingDown />({negativePLStocks.length})
+              </ToggleButton>
+            )}
+          </ToggleButtonGroup>
       </Box>
-      
+
       {/* Holdings Grid - now displays based on currentPage */}
       <Grid container spacing={2}>
         {displayedRows.length > 0 ? (
