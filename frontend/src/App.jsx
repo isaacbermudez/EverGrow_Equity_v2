@@ -435,6 +435,7 @@ export default function App() {
     localStorage.removeItem('uploadedPortfolioAssets');
     localStorage.removeItem('portfolioTransactions');
     localStorage.removeItem('portfolioDeposits');
+    localStorage.removeItem('portfolioNewsCache');
     setPortfolioData([]);
     setUploadedAssets([]);
     setTransactions([]);
@@ -494,7 +495,7 @@ export default function App() {
               />
               <Route
                 path="/transactions"
-                element={<TransactionsSection transactions={transactions} />}
+                element={<TransactionsSection transactions={transactions} deposits={deposits} />}
               />
               <Route
                 path="/wealth"

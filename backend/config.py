@@ -1,5 +1,4 @@
 # config.py
-#This file will centralize all your configuration variables, including API keys and cache TTLs.
 import os
 from dotenv import load_dotenv
 
@@ -10,10 +9,12 @@ class Config:
     FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "YOUR_FINNHUB_API_KEY")
     OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "YOUR_OPENROUTER_API_KEY_HERE")
     ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "YOUR_ALPHA_VANTAGE_API_KEY")
+    FRED_API_KEY = os.getenv("FRED_API_KEY", "YOUR_FRED_API_KEY_HERE")
 
     # API Rate Limits
     GLOBAL_RATE_LIMIT = 60 # requests per minute
     ALPHA_VANTAGE_RATE_LIMIT = 5 # requests per minute
+    FRED_RATE_LIMIT = 100 # FRED's default is 1000/day, 100/10 minutes
 
     # Cache TTLs (in seconds)
     CACHE_TTL_QUOTE = 60
@@ -23,14 +24,16 @@ class Config:
     CACHE_TTL_COMPANY_PROFILE = 86400
     CACHE_TTL_BASIC_FINANCIALS = 3600
     CACHE_TTL_CHAT = 3600
+    CACHE_TTL_FRED = 3600
+    CACHE_TTL_SPY_HEATMAP = 900 # 15 minutes - NEW
 
     # Redis Configuration
     REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
     REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
     REDIS_DB = int(os.getenv("REDIS_DB", 0))
-    REDIS_PASSWORD = os.getenv("REDIS_PASSWORD") # Optional, if your Redis requires a password
+    REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 
-    # DeepDive System Prompt (moved here for consistency, could be in a separate text file)
+    # DeepDive System Prompt
     DEEPDIVE_SYSTEM_PROMPT = """
 Actúa como DeepDive Stocks, un analista de empresas para inversión. Tu tarea es realizar un análisis profesional, exhaustivo y estratégico en español para inversores avanzados. Usa navegación web si está disponible. Evalúa modelo de negocio, noticias recientes, directiva, sector, resiliencia, posición en el mercado, si la empresa es Blue Chip o Multibagger, explicación de variación reciente del precio y el valor intrínseco estimado. Usa tablas con esta estructura exacta para los siguientes bloques:
 

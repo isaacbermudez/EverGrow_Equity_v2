@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify
 from services.finnhub_service import get_company_profile_data, get_stock_metrics_data
 from services.alpha_vantage_service import get_alpha_vantage_financial_data
+from services.fred_service import get_fred_series_data # Import the new FRED service
 
 financial_bp = Blueprint('financial_bp', __name__)
 
@@ -85,3 +86,26 @@ def basic_financials_api():
     except Exception as e:
         print(f"Error in basic_financials_api for {symbol} ({metric_type}): {e}")
         return jsonify({"error": f"An unexpected server error occurred in the API endpoint for {symbol}: {e}"}), 500
+
+@financial_bp.route("/api/fred-data", methods=["GET"])
+def fred_data_api():
+    series_ids_str = request.args.get("series_ids")
+    if not series_ids_str:
+        return jsonify({"error": "Missing 'series_ids' query parameter."}), 400
+
+    series_ids = [s.strip() for s in series_ids_str.split(',') if s.strip()]
+
+    if not series_ids:
+        return jsonify({"error": "No valid series IDs provided."}), 400
+
+    try:
+        data = get_fred_series_data(series_ids)
+        if not data:
+            return jsonify({"message": "No data found for the provided FRED series IDs."}), 404
+        return jsonify(data)
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 429 # Rate limit or other runtime errors
+    except Exception as e:
+        print(f"Error fetching FRED data for {series_ids_str}: {e}")
+        return jsonify({"error": f"Failed to fetch FRED data: {e}"}), 500
+

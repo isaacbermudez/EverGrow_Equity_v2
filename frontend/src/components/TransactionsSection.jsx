@@ -1,108 +1,64 @@
-// src/components/TransactionsSection.jsx
 import React, { useState, useMemo } from 'react';
 import {
-  Box,
-  Typography,
-  Paper,
-  Grid,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  useTheme,
-  Tabs,
-  Tab,
-  IconButton, // For sort icons
-  TextField, // For ticker filter input
-  InputAdornment, // For search icon in text field
-  ToggleButton, // For operation filter
-  ToggleButtonGroup, // For operation filter
-  Chip, // For operation chip in table
-  ButtonGroup, // For threshold buttons
-  Button,      // For threshold buttons
+  Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, useTheme, Tabs, Tab, IconButton, TextField,
+  InputAdornment, ToggleButton, ToggleButtonGroup, Chip, ButtonGroup, Button
 } from '@mui/material';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LabelList, Area } from 'recharts'; // Added LabelList, Area
-import { DollarSign, Repeat, ArrowUp, ArrowDown, Search } from 'lucide-react'; // Changed ArrowUpward to ArrowUp, ArrowDownward to ArrowDown
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LabelList } from 'recharts';
+import { Repeat, ArrowUp, ArrowDown, Search } from 'lucide-react';
 import moment from 'moment';
 import { teal } from '@mui/material/colors';
 
-// Helper for safe number formatting
 const safeNum = (n) => (typeof n === 'number' || (typeof n === 'string' && !isNaN(parseFloat(n))) ? parseFloat(n) : 0);
-
-// Helper to format currency
-const formatCurrency = (amount) => {
-  return `$${safeNum(amount).toFixed(2)}`;
-};
-
-// Helper for date formatting for display
+const formatCurrency = (amount) => `$${safeNum(amount).toFixed(2)}`;
 const formatDate = (dateString) => {
   if (!dateString) return '-';
   try {
     return moment.utc(dateString).format('YYYY-MM-DD');
   } catch (e) {
-    console.error("Error parsing date:", dateString, e);
     return dateString;
   }
 };
 
-// Custom Table Header Cell component with sorting
-// This component should now ONLY be used for direct sortable THs, not for nested scenarios.
 const SortableTableCell = ({ children, orderBy, orderDirection, property, onRequestSort, theme, align = 'left' }) => {
   const isSorted = orderBy === property;
   return (
     <TableCell
       align={align}
-      sortDirection={isSorted ? orderDirection : false}
       sx={{
         fontWeight: 700,
         color: theme.palette.text.primary,
         backgroundColor: theme.palette.background.default,
         borderBottom: `2px solid ${theme.palette.primary.main}`,
         fontSize: '0.875rem',
-        padding: '16px 12px', // Default padding
+        padding: '16px 12px',
         textTransform: 'uppercase',
         letterSpacing: '0.5px',
-        cursor: 'pointer', // Indicate sortability
-        '&:hover': {
-          backgroundColor: theme.palette.action.hover,
-        },
+        cursor: 'pointer',
+        '&:hover': { backgroundColor: theme.palette.action.hover },
       }}
       onClick={() => onRequestSort(property)}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: align === 'right' ? 'flex-end' : 'flex-start' }}>
         {children}
         {isSorted ? (
-          orderDirection === 'desc' ? <ArrowDown style={{ fontSize: 16, marginLeft: 4 }} /> : <ArrowUp style={{ fontSize: 16, marginLeft: 4 }} /> // Changed icons here
+          orderDirection === 'desc' ? <ArrowDown style={{ fontSize: 16, marginLeft: 4 }} /> : <ArrowUp style={{ fontSize: 16, marginLeft: 4 }} />
         ) : (
-          <ArrowUp style={{ fontSize: 16, marginLeft: 4, opacity: 0.3 }} /> // Neutral sort icon
+          <ArrowUp style={{ fontSize: 16, marginLeft: 4, opacity: 0.3 }} />
         )}
       </Box>
     </TableCell>
   );
 };
 
-
-export default function TransactionsSection({ transactions = [] }) {
-
+export default function TransactionsSection({ transactions = [], deposits = [] }) {
   const theme = useTheme();
   const [selectedTab, setSelectedTab] = useState(0);
-
-  // State for sorting
-  const [orderBy, setOrderBy] = useState('Date'); // Default sort by Date
-  const [orderDirection, setOrderDirection] = useState('desc'); // Default descending
-
-  // State for filtering
-  const [operationFilter, setOperationFilter] = useState('All'); // 'All', 'Buy', 'Sell'
-  const [tickerFilter, setTickerFilter] = useState(''); // Text search for Ticker
-
-  // New state for minimum amount threshold for bar chart labels
-  const [minAmountThreshold, setMinAmountThreshold] = useState(0); // 0 means show all
-
-  const handleTabChange = (event, newValue) => {
-    setSelectedTab(newValue);
-  };
+  const [orderBy, setOrderBy] = useState('Date');
+  const [orderDirection, setOrderDirection] = useState('desc');
+  const [operationFilter, setOperationFilter] = useState('All');
+  const [tickerFilter, setTickerFilter] = useState('');
+  const [minAmountThreshold, setMinAmountThreshold] = useState(0);
 
   const handleRequestSort = (property) => {
     const isAsc = orderBy === property && orderDirection === 'asc';
@@ -110,149 +66,152 @@ export default function TransactionsSection({ transactions = [] }) {
     setOrderBy(property);
   };
 
-  const handleOperationFilterChange = (event, newFilter) => {
-    // Only update filter if a new value is selected (prevents toggling off)
-    if (newFilter !== null) {
-      setOperationFilter(newFilter);
-    }
-  };
-
-  const handleTickerFilterChange = (event) => {
-    setTickerFilter(event.target.value);
-  };
-
-  // Helper function to render bar chart labels with threshold logic (adjusted for horizontal)
   const renderBarLabel = (props) => {
     const { x, y, width, height, value } = props;
-
-    // Define a minimum bar length (width for horizontal bars) for a label to be displayed
-    const MIN_BAR_LENGTH_FOR_LABEL = 0; // Adjust as needed
-
-    // Hide label if bar length is too small OR value is below the set threshold
-    if (width < MIN_BAR_LENGTH_FOR_LABEL || (minAmountThreshold > 0 && value < minAmountThreshold)) {
-      return null;
-    }
-
-    let displayValue = formatCurrency(value);
+    if (minAmountThreshold > 0 && value < minAmountThreshold) return null;
 
     return (
       <text
-        x={x + width + 5} // Position to the right of the bar
-        y={y + height / 2} // Vertically center with the bar
+        x={x + width + 5}
+        y={y + height / 2}
         fill={theme.palette.text.primary}
-        textAnchor="start" // Align text to the start (left) of the anchor point
+        textAnchor="start"
         dominantBaseline="middle"
-        fontSize="9" // Smaller font size
+        fontSize="9"
         fontWeight="700"
-      // Removed textShadow as it causes React warnings on SVG elements
       >
-        {displayValue}
+        {formatCurrency(value)}
       </text>
     );
   };
 
-  // Memoized calculations for transaction summaries and filtered/sorted transactions
   const {
-    // Global summary metrics (calculated from ALL transactions)
-    totalTransactions,
-    totalAmountInvested,
-    totalBuyTransactions,
-    totalSellTransactions,
-    totalBuyAmount,
-    totalSellAmount,
-
-    // Data for charts (derived from FILTERED transactions)
     tickerInvestmentSummary,
     monthlyTransactionCountData,
     monthlyInvestmentAmountData,
-
-    // Data for table (filtered and sorted)
     filteredAndSortedTransactions,
+    sortedDeposits,
+    totalDepositAmount, // Added for deposits total
+    totalBuyingPower,   // Added for buying power total
+    totalFeeAmount,     // Added for fee amount total
   } = useMemo(() => {
-    // 1. Calculate global totals from ALL transactions (for Average Metrics section)
-    let allTotalTrans = transactions.length;
-    let allTotalInvested = 0;
-    let allTotalBuyTrans = 0;
-    let allTotalSellTrans = 0;
-    let allTotalBuyAmt = 0;
-    let allTotalSellAmt = 0;
-
-    transactions.forEach(t => {
-      const amountInvested = safeNum(t.Total_Invested);
-      allTotalInvested += amountInvested;
-      if (t.Ops === 'Buy') {
-        allTotalBuyTrans += 1;
-        allTotalBuyAmt += amountInvested;
-      } else if (t.Ops === 'Sell') {
-        allTotalSellTrans += 1;
-        allTotalSellAmt += amountInvested;
-      }
-    });
-
-    // 2. Apply Filters to create the base for charts and table
-    const filteredBaseTransactions = transactions.filter(t => {
+    // Apply filters
+    const filtered = transactions.filter(t => {
       const matchesOperation = operationFilter === 'All' || (t.Ops && t.Ops.toLowerCase() === operationFilter.toLowerCase());
       const matchesTicker = tickerFilter === '' || (t.Ticker && t.Ticker.toLowerCase().includes(tickerFilter.toLowerCase()));
       return matchesOperation && matchesTicker;
     });
 
-    // 3. Prepare data for charts from filteredBaseTransactions
-    const currentTickerInvestments = {};
-    const currentMonthlyTransactionCounts = {};
-    const currentMonthlyInvestments = {};
+    // Prepare chart data
+    const tickerInvestments = {};
+    const monthlyTransactionCounts = {};
+    const monthlyInvestments = {};
 
-    filteredBaseTransactions.forEach(t => {
-      const amountInvested = safeNum(t.Total_Invested);
+    filtered.forEach(t => {
+      const amount = safeNum(t.Total_Invested);
       const ticker = t.Ticker || 'N/A';
-      currentTickerInvestments[ticker] = (currentTickerInvestments[ticker] || 0) + amountInvested;
+      tickerInvestments[ticker] = (tickerInvestments[ticker] || 0) + amount;
 
       const monthYear = moment.utc(t.Date).format('YYYY-MM');
-      currentMonthlyTransactionCounts[monthYear] = (currentMonthlyTransactionCounts[monthYear] || 0) + 1;
-      currentMonthlyInvestments[monthYear] = (currentMonthlyInvestments[monthYear] || 0) + amountInvested;
+      monthlyTransactionCounts[monthYear] = (monthlyTransactionCounts[monthYear] || 0) + 1;
+      monthlyInvestments[monthYear] = (monthlyInvestments[monthYear] || 0) + amount;
     });
 
-    const currentTickerInvestmentSummary = Object.entries(currentTickerInvestments)
+    const tickerSummary = Object.entries(tickerInvestments)
       .map(([ticker, amount]) => ({ ticker, amount }))
       .sort((a, b) => b.amount - a.amount);
-    const currentMonthlyTransactionCountData = Object.keys(currentMonthlyTransactionCounts).sort().map(month => ({ month, count: currentMonthlyTransactionCounts[month] }));
-    const currentMonthlyInvestmentAmountData = Object.keys(currentMonthlyInvestments).sort().map(month => ({ month, amount: currentMonthlyInvestments[month] }));
 
-    // 4. Sort the filteredBaseTransactions for the table
-    const sortedTransactions = [...filteredBaseTransactions].sort((a, b) => {
-      let aValue;
-      let bValue;
+    const monthlyCountData = Object.keys(monthlyTransactionCounts).sort()
+      .map(month => ({ month, count: monthlyTransactionCounts[month] }));
 
-      // Ensure consistent data access for sorting
+    const monthlyAmountData = Object.keys(monthlyInvestments).sort()
+      .map(month => ({ month, amount: monthlyInvestments[month] }));
+
+    // Sort filtered data
+    const sorted = [...filtered].sort((a, b) => {
+      let aValue, bValue;
       if (orderBy === 'Date') {
         aValue = new Date(a.Date);
         bValue = new Date(b.Date);
       } else if (['Shares', 'Price', 'Total_Invested', 'Fee'].includes(orderBy)) {
         aValue = safeNum(a[orderBy]);
         bValue = safeNum(b[orderBy]);
-      } else { // 'Ticker' and 'Ops' - string comparison
+      } else {
         aValue = (a[orderBy] || '').toString().toLowerCase();
         bValue = (b[orderBy] || '').toString().toLowerCase();
       }
-
       if (aValue < bValue) return orderDirection === 'asc' ? -1 : 1;
       if (aValue > bValue) return orderDirection === 'asc' ? 1 : -1;
       return 0;
     });
 
-    return {
-      totalTransactions: allTotalTrans,
-      totalAmountInvested: allTotalInvested,
-      totalBuyTransactions: allTotalBuyTrans,
-      totalSellTransactions: allTotalSellTrans,
-      totalBuyAmount: allTotalBuyAmt,
-      totalSellAmount: allTotalSellAmt,
-      tickerInvestmentSummary: currentTickerInvestmentSummary,
-      monthlyTransactionCountData: currentMonthlyTransactionCountData,
-      monthlyInvestmentAmountData: currentMonthlyInvestmentAmountData,
-      filteredAndSortedTransactions: sortedTransactions,
-    };
-  }, [transactions, orderBy, orderDirection, operationFilter, tickerFilter]); // Dependencies for useMemo
+    // Sort deposits data based on actual keys
+    const sortedDeposits = [...deposits].sort((a, b) => {
+      let aValue, bValue;
+      if (orderBy === 'Date') {
+        aValue = new Date(a.Date);
+        bValue = new Date(b.Date);
+      } else if (orderBy === 'Deposit_Amount' || orderBy === 'Buying_Power' || orderBy === 'Fee_Amount') {
+        aValue = safeNum(a[orderBy]);
+        bValue = safeNum(b[orderBy]);
+      } else {
+        aValue = (a[orderBy] || '').toString().toLowerCase();
+        bValue = (b[orderBy] || '').toString().toLowerCase();
+      }
+      if (aValue < bValue) return orderDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return orderDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
 
+    // Calculate totals for deposits
+    const totalDepositAmount = deposits.reduce((sum, d) => sum + safeNum(d.Deposit_Amount), 0);
+    const totalBuyingPower = deposits.reduce((sum, d) => sum + safeNum(d.Buying_Power), 0);
+    const totalFeeAmount = deposits.reduce((sum, d) => sum + safeNum(d.Fee_Amount), 0);
+
+
+    return {
+      tickerInvestmentSummary: tickerSummary,
+      monthlyTransactionCountData: monthlyCountData,
+      monthlyInvestmentAmountData: monthlyAmountData,
+      filteredAndSortedTransactions: sorted,
+      sortedDeposits,
+      totalDepositAmount,
+      totalBuyingPower,
+      totalFeeAmount,
+    };
+  }, [transactions, deposits, orderBy, orderDirection, operationFilter, tickerFilter]);
+
+  const chartStyle = {
+    p: 3,
+    borderRadius: 2,
+    minHeight: 450,
+    border: '1px solid rgba(255,255,255,0.12)',
+  };
+
+  const commonChartProps = {
+    width: "100%",
+    height: 450
+  };
+
+  const commonAxisProps = {
+    stroke: theme.palette.text.secondary,
+    tick: { fontSize: 12, fill: theme.palette.text.secondary, fontWeight: 500 },
+    tickLine: { stroke: theme.palette.text.secondary, strokeWidth: 1.5 },
+    axisLine: { stroke: theme.palette.text.secondary, strokeWidth: 2 },
+    tickMargin: 20
+  };
+
+  const commonTooltipProps = {
+    contentStyle: {
+      backgroundColor: theme.palette.background.paper,
+      border: `2px solid ${theme.palette.primary.main}`,
+      borderRadius: 12,
+      padding: '16px',
+      minWidth: '200px'
+    },
+    itemStyle: { fontSize: 13, fontWeight: 600, padding: '4px 0' },
+    labelStyle: { fontWeight: 700, fontSize: 14, marginBottom: '8px' }
+  };
 
   return (
     <Box sx={{ width: '100%', p: 3 }}>
@@ -276,27 +235,21 @@ export default function TransactionsSection({ transactions = [] }) {
       </Typography>
 
       <Paper elevation={0} sx={{ borderRadius: 2, mb: 4 }}>
-        <Tabs value={selectedTab} onChange={handleTabChange} centered indicatorColor="primary" textColor="primary">
+        <Tabs value={selectedTab} onChange={(e, v) => setSelectedTab(v)} centered>
           <Tab label="Historical Trend" />
           <Tab label="Transaction Details" />
+          <Tab label="Deposits" />
         </Tabs>
       </Paper>
 
       {selectedTab === 0 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {/* Controls for Investment Amount by Ticker Chart */}
+          {/* Controls */}
           {tickerInvestmentSummary.length > 0 && (
             <Box sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 2,
-              alignItems: 'center',
-              justifyContent: 'center', // Center the controls
-              p: 2,
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              borderRadius: 2,
-              border: '1px solid rgba(255,255,255,0.1)',
-              mb: 1 // Add margin below the controls
+              display: 'flex', gap: 2, alignItems: 'center', justifyContent: 'center',
+              p: 2, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 2,
+              border: '1px solid rgba(255,255,255,0.1)', mb: 1
             }}>
               <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>
                 Min $:
@@ -306,26 +259,24 @@ export default function TransactionsSection({ transactions = [] }) {
                   onClick={() => setMinAmountThreshold(0)}
                   variant={minAmountThreshold === 0 ? 'contained' : 'outlined'}
                   sx={{
-                    minWidth: 35,
+                    minWidth: 35, fontSize: '0.7rem',
                     color: minAmountThreshold === 0 ? 'white' : 'rgba(255,255,255,0.7)',
                     borderColor: 'rgba(255,255,255,0.3)',
                     backgroundColor: minAmountThreshold === 0 ? teal[600] : 'transparent',
-                    fontSize: '0.7rem'
                   }}
                 >
                   All
                 </Button>
-                {[200, 500, 5000].map(threshold => ( // Example thresholds
+                {[200, 500, 5000].map(threshold => (
                   <Button
                     key={threshold}
                     onClick={() => setMinAmountThreshold(threshold)}
                     variant={minAmountThreshold === threshold ? 'contained' : 'outlined'}
                     sx={{
-                      minWidth: 35,
+                      minWidth: 35, fontSize: '0.7rem',
                       color: minAmountThreshold === threshold ? 'white' : 'rgba(255,255,255,0.7)',
                       borderColor: 'rgba(255,255,255,0.3)',
                       backgroundColor: minAmountThreshold === threshold ? teal[600] : 'transparent',
-                      fontSize: '0.7rem'
                     }}
                   >
                     ${threshold / 1000}K
@@ -335,496 +286,81 @@ export default function TransactionsSection({ transactions = [] }) {
             </Box>
           )}
 
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              borderRadius: 2,
-              minHeight: 500,
-              border: '1px solid rgba(255,255,255,0.12)',
-            }}
-          >
+          {/* Investment by Ticker Chart */}
+          <Paper elevation={0} sx={chartStyle}>
             <Typography variant="h6" gutterBottom sx={{ color: 'white', fontWeight: 600, mb: 2 }}>
               Investment Amount by Ticker
             </Typography>
             {tickerInvestmentSummary.length > 0 ? (
-              <ResponsiveContainer width="100%" height={Math.max(300, tickerInvestmentSummary.length * 30)}> {/* Dynamic height */}
-                <BarChart
-                  data={tickerInvestmentSummary}
-                  layout="vertical" // Changed to vertical layout for horizontal bars
-                  margin={{ top: 10, right: 60, left: 80, bottom: 10 }} // Adjusted margins for horizontal layout
-                >
-                  <CartesianGrid
-                    strokeDasharray="2 4"
-                    stroke={theme.palette.divider}
-                    strokeOpacity={0.3}
-                    horizontal={false} // Only vertical grid lines for horizontal bars
-                  />
-
-                  <XAxis // This is now the numerical axis for amount
-                    type="number"
-                    stroke={theme.palette.text.secondary}
-                    tick={{
-                      fontSize: 12,
-                      fill: theme.palette.text.secondary,
-                      fontWeight: 500
-                    }}
-                    tickLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 1.5
-                    }}
-                    axisLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 2
-                    }}
-                    tickMargin={20}
-                    width={80} // Adjust width for axis labels
-                    domain={[0, 'dataMax + 1000']} // Ensure labels fit on the max side
-                    tickFormatter={(value) => {
-                      if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-                      if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-                      return formatCurrency(value);
-                    }}
-                  />
-
-                  <YAxis // This is now the categorical axis for tickers
-                    dataKey="ticker"
-                    type="category"
-                    stroke={theme.palette.text.secondary}
-                    tick={{
-                      fontSize: 11,
-                      fill: theme.palette.text.secondary,
-                      fontWeight: 500
-                    }}
-                    tickLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 1.5
-                    }}
-                    axisLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 2
-                    }}
-                    width={100} // Give more space for ticker labels
-                    tickMargin={5}
-                  />
-
-                  <Tooltip
-                    formatter={(value, name) => [formatCurrency(value), name]}
-                    labelFormatter={(label) => `Ticker: ${label}`}
-                    contentStyle={{
-                      backgroundColor: theme.palette.background.paper,
-                      border: `2px solid ${theme.palette.primary.main}`,
-                      borderRadius: 12,
-                      boxShadow: `0 8px 32px ${theme.palette.action.hover}`,
-                      padding: '16px',
-                      minWidth: '200px'
-                    }}
-                    itemStyle={{
-                      color: theme.palette.text.primary,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      padding: '4px 0'
-                    }}
-                    labelStyle={{
-                      color: theme.palette.primary.main,
-                      fontWeight: 700,
-                      fontSize: 14,
-                      marginBottom: '8px',
-                      borderBottom: `1px solid ${theme.palette.divider}`,
-                      paddingBottom: '8px'
-                    }}
-                    cursor={{
-                      fill: theme.palette.action.hover,
-                      fillOpacity: 0.1
-                    }}
-                  />
-
-                  <Legend
-                    verticalAlign="top"
-                    height={50}
-                    iconType="rect"
-                    wrapperStyle={{
-                      paddingBottom: 30,
-                      fontSize: '14px',
-                      fontWeight: 600
-                    }}
-                    iconSize={12}
-                  />
-
-                  <Bar
-                    dataKey="amount"
-                    name="Investment Amount"
-                    radius={[0, 6, 6, 0]} // Rounded corners on the right side for horizontal bars
-                    barSize={20} // Adjust bar thickness
-                    fill="url(#horizontalInvestmentGradient)" // New horizontal gradient
-                    stroke={theme.palette.primary.main}
-                    strokeWidth={1}
-                  >
-                    <LabelList
-                      dataKey="amount"
-                      position="right" // Position labels to the right of the bar
-                      content={renderBarLabel} // Use the custom content renderer
-                    />
+              <ResponsiveContainer {...commonChartProps} height={Math.max(300, tickerInvestmentSummary.length * 30)}>
+                <BarChart data={tickerInvestmentSummary} layout="vertical" margin={{ top: 10, right: 60, left: 80, bottom: 10 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke={theme.palette.divider} strokeOpacity={0.3} horizontal={false} />
+                  <XAxis type="number" {...commonAxisProps} width={80} domain={[0, 'dataMax + 1000']}
+                    tickFormatter={(value) => value >= 1000000 ? `$${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : formatCurrency(value)} />
+                  <YAxis dataKey="ticker" type="category" {...commonAxisProps} width={100} tickMargin={5} />
+                   {/* <Tooltip {...commonTooltipProps} formatter={(value) => [formatCurrency(value), 'Investment Amount']} labelFormatter={(label) => `Ticker: ${label}`} />*/}
+                  <Legend verticalAlign="top" height={50} />
+                  <Bar dataKey="amount" name="Investment Amount" radius={[0, 6, 6, 0]} barSize={20} fill="url(#horizontalInvestmentGradient)" stroke={theme.palette.primary.main} strokeWidth={1}>
+                    <LabelList dataKey="amount" position="right" content={renderBarLabel} />
                   </Bar>
-
                   <defs>
-                    {/* New horizontal gradient for bars */}
                     <linearGradient id="horizontalInvestmentGradient" x1="0" y1="0" x2="1" y2="0">
                       <stop offset="0%" stopColor={theme.palette.primary.dark} stopOpacity={0.8} />
-                      <stop offset="50%" stopColor={theme.palette.primary.main} stopOpacity={0.7} />
                       <stop offset="100%" stopColor={theme.palette.primary.main} stopOpacity={0.9} />
                     </linearGradient>
                   </defs>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 400 }}>
-                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 400 }}>
+                <Typography variant="h6" color="text.secondary">No data available</Typography>
               </Box>
             )}
           </Paper>
 
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              borderRadius: 2,
-              minHeight: 450,
-              border: '1px solid rgba(255,255,255,0.12)',
-            }}
-          >
+          {/* Monthly Transaction Count Chart */}
+          <Paper elevation={0} sx={chartStyle}>
             <Typography variant="h6" gutterBottom sx={{ color: 'white', fontWeight: 600, mb: 2 }}>
               Monthly Transaction Count Trend
             </Typography>
             {monthlyTransactionCountData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={450}>
-                <LineChart
-                  data={monthlyTransactionCountData}
-                  margin={{ top: 40, right: 80, left: 80, bottom: 40 }}
-                >
-                  {/* Enhanced Grid with subtle styling */}
-                  <CartesianGrid
-                    strokeDasharray="2 4"
-                    stroke={theme.palette.divider}
-                    strokeOpacity={0.3}
-                    horizontal={true}
-                    vertical={false}
-                  />
-
-                  {/* Enhanced X-Axis */}
-                  <XAxis
-                    dataKey="month"
-                    stroke={theme.palette.text.secondary}
-                    tick={{
-                      fontSize: 12,
-                      fill: theme.palette.text.secondary,
-                      fontWeight: 500
-                    }}
-                    tickLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 1.5
-                    }}
-                    axisLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 2
-                    }}
-                    tickMargin={20}
-                    interval={0}
-                    angle={-30}
-                    textAnchor="end"
-                    height={60}
-                  />
-
-                  {/* Enhanced Y-Axis */}
-                  <YAxis
-                    stroke={theme.palette.text.secondary}
-                    tick={{
-                      fontSize: 12,
-                      fill: theme.palette.text.secondary,
-                      fontWeight: 500
-                    }}
-                    tickLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 1.5
-                    }}
-                    axisLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 2
-                    }}
-                    tickMargin={20}
-                    width={60}
-                    domain={[0, 'dataMax + 5']}
-                    tickFormatter={(value) => {
-                      if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-                      return value.toString();
-                    }}
-                  />
-
-                  {/* Enhanced Tooltip */}
-                  <Tooltip
-                    formatter={(value, name) => [
-                      `${value} transactions`,
-                      name
-                    ]}
-                    labelFormatter={(label) => `Month: ${label}`}
-                    contentStyle={{
-                      backgroundColor: theme.palette.background.paper,
-                      border: `2px solid ${theme.palette.info.main}`,
-                      borderRadius: 12,
-                      boxShadow: `0 8px 32px ${theme.palette.action.hover}`,
-                      padding: '16px',
-                      minWidth: '180px'
-                    }}
-                    itemStyle={{
-                      color: theme.palette.info.main,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      padding: '4px 0'
-                    }}
-                    labelStyle={{
-                      color: theme.palette.text.primary,
-                      fontWeight: 700,
-                      fontSize: 14,
-                      marginBottom: '8px',
-                      borderBottom: `1px solid ${theme.palette.divider}`,
-                      paddingBottom: '8px'
-                    }}
-                    cursor={{
-                      stroke: theme.palette.info.main,
-                      strokeWidth: 2,
-                      strokeOpacity: 0.5,
-                      strokeDasharray: '4 4'
-                    }}
-                  />
-
-                  {/* Enhanced Legend */}
-                  <Legend
-                    verticalAlign="top"
-                    height={50}
-                    wrapperStyle={{
-                      paddingBottom: 25,
-                      fontSize: '14px',
-                      fontWeight: 600
-                    }}
-                    iconType="line"
-                  />
-
-                  {/* Enhanced Line with gradient and animations */}
-                  <Line
-                    type="monotone"
-                    dataKey="count"
-                    stroke="url(#transactionGradient)"
-                    strokeWidth={3}
-                    dot={{
-                      fill: theme.palette.info.main,
-                      strokeWidth: 2,
-                      stroke: theme.palette.background.paper,
-                      r: 4
-                    }}
-                    activeDot={{
-                      r: 8,
-                      fill: theme.palette.info.main,
-                      stroke: theme.palette.background.paper,
-                      strokeWidth: 3,
-                      filter: `drop-shadow(0 2px 8px ${theme.palette.info.main}40)`
-                    }}
-                    name="Transaction Count"
-                  />
-
-                  {/* Add area fill for visual enhancement */}
-                  <defs>
-                    <linearGradient id="transactionGradient" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor={theme.palette.info.light} />
-                      <stop offset="50%" stopColor={theme.palette.info.main} />
-                      <stop offset="100%" stopColor={theme.palette.info.dark} />
-                    </linearGradient>
-                    <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={theme.palette.info.main} stopOpacity={0.3} />
-                      <stop offset="100%" stopColor={theme.palette.info.main} stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
+              <ResponsiveContainer {...commonChartProps}>
+                <LineChart data={monthlyTransactionCountData} margin={{ top: 40, right: 80, left: 80, bottom: 40 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke={theme.palette.divider} strokeOpacity={0.3} />
+                  <XAxis dataKey="month" {...commonAxisProps} interval={0} angle={-30} textAnchor="end" height={60} />
+                  <YAxis {...commonAxisProps} width={60} domain={[0, 'dataMax + 5']} tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value.toString()} />
+                  <Tooltip {...commonTooltipProps} formatter={(value) => [`${value} transactions`, 'Transaction Count']} labelFormatter={(label) => `Month: ${label}`} />
+                  <Legend verticalAlign="top" height={50} />
+                  <Line type="monotone" dataKey="count" stroke={theme.palette.info.main} strokeWidth={3} dot={{ fill: theme.palette.info.main, r: 4 }} name="Transaction Count" />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 350 }}>
-                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 350 }}>
+                <Typography variant="h6" color="text.secondary">No data available</Typography>
               </Box>
             )}
           </Paper>
 
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              borderRadius: 2,
-              minHeight: 450,
-              border: '1px solid rgba(255,255,255,0.12)',
-            }}
-          >
+          {/* Monthly Investment Amount Chart */}
+          <Paper elevation={0} sx={chartStyle}>
             <Typography variant="h6" gutterBottom sx={{ color: 'white', fontWeight: 600, mb: 2 }}>
               Monthly Investment Amount Trend
             </Typography>
             {monthlyInvestmentAmountData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={450}>
-                <LineChart
-                  data={monthlyInvestmentAmountData}
-                  margin={{ top: 40, right: 80, left: 100, bottom: 40 }}
-                >
-                  {/* Enhanced Grid with subtle styling */}
-                  <CartesianGrid
-                    strokeDasharray="2 4"
-                    stroke={theme.palette.divider}
-                    strokeOpacity={0.3}
-                    horizontal={true}
-                    vertical={false}
-                  />
-
-                  {/* Enhanced X-Axis */}
-                  <XAxis
-                    dataKey="month"
-                    stroke={theme.palette.text.secondary}
-                    tick={{
-                      fontSize: 12,
-                      fill: theme.palette.text.secondary,
-                      fontWeight: 500
-                    }}
-                    tickLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 1.5
-                    }}
-                    axisLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 2
-                    }}
-                    tickMargin={20}
-                    interval={0}
-                    angle={-30}
-                    textAnchor="end"
-                    height={60}
-                  />
-
-                  {/* Enhanced Y-Axis with smart currency formatting */}
-                  <YAxis
-                    stroke={theme.palette.text.secondary}
-                    tick={{
-                      fontSize: 12,
-                      fill: theme.palette.text.secondary,
-                      fontWeight: 500
-                    }}
-                    tickLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 1.5
-                    }}
-                    axisLine={{
-                      stroke: theme.palette.text.secondary,
-                      strokeWidth: 2
-                    }}
-                    tickMargin={20}
-                    width={80}
-                    domain={[0, 'dataMax * 1.1']}
-                    tickFormatter={(value) => {
-                      if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-                      if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-                      if (value === 0) return '$0';
-                      return `$${value}`;
-                    }}
-                  />
-
-                  {/* Enhanced Tooltip with rich formatting */}
-                  <Tooltip
-                    formatter={(value, name) => [formatCurrency(value), name]}
-                    labelFormatter={(label) => `Month: ${label}`}
-                    contentStyle={{
-                      backgroundColor: theme.palette.background.paper,
-                      border: `2px solid ${theme.palette.success.main}`,
-                      borderRadius: 12,
-                      boxShadow: `0 8px 32px ${theme.palette.action.hover}`,
-                      padding: '16px',
-                      minWidth: '200px'
-                    }}
-                    itemStyle={{
-                      color: theme.palette.success.main,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      padding: '4px 0'
-                    }}
-                    labelStyle={{
-                      color: theme.palette.text.primary,
-                      fontWeight: 700,
-                      fontSize: 14,
-                      marginBottom: '8px',
-                      borderBottom: `1px solid ${theme.palette.divider}`,
-                      paddingBottom: '8px'
-                    }}
-                    cursor={{
-                      stroke: theme.palette.success.main,
-                      strokeWidth: 2,
-                      strokeOpacity: 0.5,
-                      strokeDasharray: '4 4'
-                    }}
-                  />
-
-                  {/* Enhanced Legend */}
-                  <Legend
-                    verticalAlign="top"
-                    height={50}
-                    wrapperStyle={{
-                      paddingBottom: 25,
-                      fontSize: '14px',
-                      fontWeight: 600
-                    }}
-                    iconType="line"
-                  />
-
-                  {/* Enhanced Line with gradient and premium styling */}
-                  <Line
-                    type="monotone"
-                    dataKey="amount"
-                    stroke="url(#investmentLineGradient)"
-                    strokeWidth={3}
-                    dot={{
-                      fill: theme.palette.success.main,
-                      strokeWidth: 2,
-                      stroke: theme.palette.background.paper,
-                      r: 4
-                    }}
-                    activeDot={{
-                      r: 8,
-                      fill: theme.palette.success.main,
-                      stroke: theme.palette.background.paper,
-                      strokeWidth: 3,
-                      filter: `drop-shadow(0 2px 8px ${theme.palette.success.main}40)`
-                    }}
-                    name="Investment Amount"
-                  />
-
-                  {/* Add area component for visual depth */}
-                  <Area
-                    type="monotone"
-                    dataKey="amount"
-                    stroke="none"
-                    fill="url(#investmentAreaGradient)"
-                    fillOpacity={1}
-                  />
-
-                  {/* Gradient definitions */}
-                  <defs>
-                    <linearGradient id="investmentLineGradient" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor={theme.palette.success.light} />
-                      <stop offset="50%" stopColor={theme.palette.success.main} />
-                      <stop offset="100%" stopColor={theme.palette.success.dark} />
-                    </linearGradient>
-                    <linearGradient id="investmentAreaGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={theme.palette.success.main} stopOpacity={0.2} />
-                      <stop offset="50%" stopColor={theme.palette.success.main} stopOpacity={0.1} />
-                      <stop offset="100%" stopColor={theme.palette.success.main} stopOpacity={0.05} />
-                    </linearGradient>
-                  </defs>
+              <ResponsiveContainer {...commonChartProps}>
+                <LineChart data={monthlyInvestmentAmountData} margin={{ top: 40, right: 80, left: 100, bottom: 40 }}>
+                  <CartesianGrid strokeDasharray="2 4" stroke={theme.palette.divider} strokeOpacity={0.3} />
+                  <XAxis dataKey="month" {...commonAxisProps} interval={0} angle={-30} textAnchor="end" height={60} />
+                  <YAxis {...commonAxisProps} width={80} domain={[0, 'dataMax * 1.1']}
+                    tickFormatter={(value) => value >= 1000000 ? `$${(value / 1000000).toFixed(1)}M` : value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : value === 0 ? '$0' : `$${value}`} />
+                  <Tooltip {...commonTooltipProps} formatter={(value) => [formatCurrency(value), 'Investment Amount']} labelFormatter={(label) => `Month: ${label}`} />
+                  <Legend verticalAlign="top" height={50} />
+                  <Line type="monotone" dataKey="amount" stroke={theme.palette.success.main} strokeWidth={3} dot={{ fill: theme.palette.success.main, r: 4 }} name="Investment Amount" />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 350 }}>
-                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 5, minHeight: 350 }}>
+                <Typography variant="h6" color="text.secondary">No data available</Typography>
               </Box>
             )}
           </Paper>
@@ -832,365 +368,157 @@ export default function TransactionsSection({ transactions = [] }) {
       )}
 
       {selectedTab === 1 && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              borderRadius: 2,
-              minHeight: 450,
-              border: '1px solid rgba(255,255,255,0.12)',
-            }}
-          >
-            {transactions.length > 0 ? (
-              <TableContainer
-                sx={{
-                  flexGrow: 1, // Allows table to take up available height
-                  borderRadius: 2,
-                  boxShadow: theme.shadows[4],
-                  border: `1px solid ${theme.palette.divider}`,
-                  overflowY: 'auto', // Enable vertical scrolling
-                  overflowX: 'hidden', // Prevent horizontal scrolling
-                  // Removed maxHeight to allow full content visibility
-                }}
-              >
-                <Table stickyHeader size="small">
-                  <TableHead>
-                    <TableRow>
-                      {/* Date Column - Sortable */}
-                      <SortableTableCell
-                        orderBy={orderBy}
-                        orderDirection={orderDirection}
-                        property="Date"
-                        onRequestSort={handleRequestSort}
-                        theme={theme}
-                      >
-                        Date
-                      </SortableTableCell>
+        <Paper elevation={0} sx={chartStyle}>
+          {transactions.length > 0 ? (
+            <TableContainer sx={{ borderRadius: 2, border: `1px solid ${theme.palette.divider}`, overflowY: 'auto' }}>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <SortableTableCell orderBy={orderBy} orderDirection={orderDirection} property="Date" onRequestSort={handleRequestSort} theme={theme}>Date</SortableTableCell>
 
-                      {/* Ticker Column - Filterable and Sortable */}
-                      <TableCell
-                        sx={{
-                          fontWeight: 700,
-                          color: theme.palette.text.primary,
-                          backgroundColor: theme.palette.background.default,
-                          borderBottom: `2px solid ${theme.palette.primary.main}`,
-                          fontSize: '0.875rem',
-                          padding: '8px 12px', // Adjusted padding
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 0.5 }}> {/* Added mb */}
-                            <Typography variant="inherit" sx={{ fontWeight: 'inherit', color: 'inherit' }}>
-                              Ticker
-                            </Typography>
-                            <IconButton
-                              onClick={() => handleRequestSort('Ticker')}
-                              size="small"
-                              sx={{
-                                ml: 'auto', // Push to the right
-                                color: theme.palette.text.primary,
-                                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
-                              }}
-                            >
-                              {orderBy === 'Ticker' && orderDirection === 'desc' ?
-                                <ArrowDown style={{ fontSize: 16 }} /> :
-                                <ArrowUp style={{ fontSize: 16, opacity: orderBy === 'Ticker' ? 1 : 0.3 }} />}
-                            </IconButton>
-                          </Box>
-                          <TextField
-                            variant="outlined"
-                            size="small"
-                            placeholder="Search Ticker..."
-                            value={tickerFilter}
-                            onChange={handleTickerFilterChange}
-                            sx={{
-                              width: '100%',
-                              mt: 0.5,
-                              '& .MuiOutlinedInput-root': {
-                                height: 32,
-                                fontSize: '0.75rem',
-                                color: theme.palette.text.primary,
-                                '& fieldset': { borderColor: theme.palette.divider },
-                                '&:hover fieldset': { borderColor: theme.palette.primary.main },
-                                '&.Mui-focused fieldset': { borderColor: theme.palette.primary.light },
-                                backgroundColor: theme.palette.background.paper,
-                              },
-                              '& .MuiInputBase-input': {
-                                padding: '4px 8px',
-                              },
-                            }}
-                            InputProps={{
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <Search size={16} color={theme.palette.text.secondary} />
-                                </InputAdornment>
-                              ),
-                            }}
-                          />
+                    <TableCell sx={{ fontWeight: 700, color: theme.palette.text.primary, backgroundColor: theme.palette.background.default, borderBottom: `2px solid ${theme.palette.primary.main}`, fontSize: '0.875rem', padding: '8px 12px', textTransform: 'uppercase' }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 0.5 }}>
+                          <Typography variant="inherit">Ticker</Typography>
+                          <IconButton onClick={() => handleRequestSort('Ticker')} size="small" sx={{ ml: 'auto', color: theme.palette.text.primary }}>
+                            {orderBy === 'Ticker' && orderDirection === 'desc' ? <ArrowDown style={{ fontSize: 16 }} /> : <ArrowUp style={{ fontSize: 16, opacity: orderBy === 'Ticker' ? 1 : 0.3 }} />}
+                          </IconButton>
                         </Box>
-                      </TableCell>
+                        <TextField
+                          variant="outlined" size="small" placeholder="Search Ticker..." value={tickerFilter} onChange={(e) => setTickerFilter(e.target.value)}
+                          sx={{ width: '100%', '& .MuiOutlinedInput-root': { height: 32, fontSize: '0.75rem', backgroundColor: theme.palette.background.paper } }}
+                          InputProps={{ startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment> }}
+                        />
+                      </Box>
+                    </TableCell>
 
-                      {/* Operation Column - Filterable */}
-                      <TableCell
-                        sx={{
-                          fontWeight: 700,
-                          color: theme.palette.text.primary,
-                          backgroundColor: theme.palette.background.default,
-                          borderBottom: `2px solid ${theme.palette.primary.main}`,
-                          fontSize: '0.875rem',
-                          padding: '8px 12px',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px'
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5 }}>
-                          <Typography variant="inherit" sx={{ fontWeight: 'inherit', color: 'inherit', mb: 0.5 }}>
-                            Operation
-                          </Typography>
-                          <ToggleButtonGroup
-                            value={operationFilter}
-                            exclusive
-                            onChange={handleOperationFilterChange}
-                            size="small"
-                            sx={{
-                              backgroundColor: theme.palette.background.paper,
-                              width: '100%',
-                              '& .MuiToggleButton-root': {
-                                fontSize: '0.7rem',
-                                padding: '4px 8px',
-                                textTransform: 'none',
-                                borderColor: theme.palette.divider,
-                                color: theme.palette.text.secondary,
-                                flexGrow: 1,
-                                '&.Mui-selected': {
-                                  backgroundColor: teal[700],
-                                  color: 'white',
-                                  borderColor: teal[500],
-                                  '&:hover': {
-                                    backgroundColor: teal[600],
-                                  },
-                                },
-                                '&:hover': {
-                                  backgroundColor: theme.palette.action.hover,
-                                },
-                              },
-                            }}
-                          >
-                            <ToggleButton value="All">All</ToggleButton>
-                            <ToggleButton value="Buy">Buy</ToggleButton>
-                            <ToggleButton value="Sell">Sell</ToggleButton>
-                          </ToggleButtonGroup>
-                        </Box>
-                      </TableCell>
-
-                      {/* Shares Column - Sortable */}
-                      <SortableTableCell
-                        orderBy={orderBy}
-                        orderDirection={orderDirection}
-                        property="Shares"
-                        onRequestSort={handleRequestSort}
-                        theme={theme}
-                        align="right"
-                      >
-                        Shares
-                      </SortableTableCell>
-
-                      {/* Price Column - Sortable */}
-                      <SortableTableCell
-                        orderBy={orderBy}
-                        orderDirection={orderDirection}
-                        property="Price"
-                        onRequestSort={handleRequestSort}
-                        theme={theme}
-                        align="right"
-                      >
-                        Price
-                      </SortableTableCell>
-
-                      {/* Total Invested Column - Sortable */}
-                      <SortableTableCell
-                        orderBy={orderBy}
-                        orderDirection={orderDirection}
-                        property="Total_Invested"
-                        onRequestSort={handleRequestSort}
-                        theme={theme}
-                        align="right"
-                      >
-                        Total Invested
-                      </SortableTableCell>
-
-                      {/* Fee Column - Sortable */}
-                      <SortableTableCell
-                        orderBy={orderBy}
-                        orderDirection={orderDirection}
-                        property="Fee"
-                        onRequestSort={handleRequestSort}
-                        theme={theme}
-                        align="right"
-                      >
-                        Fee
-                      </SortableTableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredAndSortedTransactions.length > 0 ? (
-                      filteredAndSortedTransactions.map((row, index) => (
-                        <TableRow
-                          key={index}
-                          sx={{
-                            '&:last-child td, &:last-child th': { border: 0 },
-                            '&:hover': {
-                              backgroundColor: theme.palette.action.hover,
-                              cursor: 'pointer',
-                              transform: 'scale(1.001)',
-                              transition: 'all 0.2s ease-in-out'
-                            },
-                            '&:nth-of-type(odd)': {
-                              backgroundColor: theme.palette.action.selected
-                            },
-                            borderLeft:
-                              row.Ops === 'Buy' ? `4px solid ${theme.palette.success.main}` :
-                                row.Ops === 'Sell' ? `4px solid ${theme.palette.error.main}` : // Corrected this line as it was `44px`
-                                  `4px solid ${theme.palette.info.main}`,
-                            transition: 'all 0.3s ease'
-                          }}
+                    <TableCell sx={{ fontWeight: 700, color: theme.palette.text.primary, backgroundColor: theme.palette.background.default, borderBottom: `2px solid ${theme.palette.primary.main}`, fontSize: '0.875rem', padding: '8px 12px', textTransform: 'uppercase' }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Typography variant="inherit" sx={{ mb: 0.5 }}>Operation</Typography>
+                        <ToggleButtonGroup
+                          value={operationFilter} exclusive onChange={(e, v) => v && setOperationFilter(v)} size="small"
+                          sx={{ width: '100%', '& .MuiToggleButton-root': { fontSize: '0.7rem', padding: '4px 8px', flexGrow: 1, '&.Mui-selected': { backgroundColor: teal[700], color: 'white' } } }}
                         >
-                          <TableCell
-                            component="th"
-                            scope="row"
-                            sx={{
-                              color: theme.palette.text.primary,
-                              fontWeight: 600,
-                              padding: '14px 12px',
-                              fontSize: '0.875rem'
-                            }}
-                          >
-                            {formatDate(row.Date)}
-                          </TableCell>
-                          <TableCell
-                            sx={{
-                              color: theme.palette.text.primary,
-                              fontWeight: 500,
-                              padding: '14px 12px',
-                              fontSize: '0.875rem'
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                display: 'inline-block',
-                                backgroundColor: theme.palette.primary.main,
-                                color: theme.palette.primary.contrastText,
-                                px: 1.5,
-                                py: 0.5,
-                                borderRadius: 1,
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px'
-                              }}
-                            >
-                              {row.Ticker || 'N/A'}
-                            </Box>
-                          </TableCell>
-                          <TableCell
-                            sx={{
-                              color: theme.palette.text.primary,
-                              fontWeight: 500,
-                              padding: '14px 12px',
-                              fontSize: '0.875rem'
-                            }}
-                          >
-                            <Chip
-                              label={row.Ops || 'N/A'}
-                              size="small"
-                              sx={{
-                                backgroundColor: row.Ops === 'Buy' ? theme.palette.success.main :
-                                  row.Ops === 'Sell' ? theme.palette.error.main :
-                                    theme.palette.info.main,
-                                color: row.Ops === 'Buy' ? theme.palette.success.contrastText :
-                                  row.Ops === 'Sell' ? theme.palette.error.contrastText :
-                                    theme.palette.info.contrastText,
-                                fontWeight: 600,
-                                fontSize: '0.75rem',
-                                minWidth: '60px'
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{
-                              color: theme.palette.text.primary,
-                              fontWeight: 600,
-                              padding: '14px 12px',
-                              fontSize: '0.875rem',
-                              fontFamily: 'monospace'
-                            }}
-                          >
-                            {safeNum(row.Shares).toFixed(3)}
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{
-                              color: theme.palette.text.primary,
-                              fontWeight: 600,
-                              padding: '14px 12px',
-                              fontSize: '0.875rem',
-                              fontFamily: 'monospace'
-                            }}
-                          >
-                            {formatCurrency(row.Price)}
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{
-                              color: theme.palette.text.primary,
-                              fontWeight: 700,
-                              padding: '14px 12px',
-                              fontSize: '0.875rem',
-                              fontFamily: 'monospace',
-                              backgroundColor: theme.palette.success.light + '20',
-                              borderRadius: 1
-                            }}
-                          >
-                            {formatCurrency(row.Total_Invested)}
-                          </TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{
-                              color: safeNum(row.Fee) > 0 ? theme.palette.warning.main : theme.palette.text.secondary,
-                              fontWeight: 600,
-                              padding: '14px 12px',
-                              fontSize: '0.875rem',
-                              fontFamily: 'monospace'
-                            }}
-                          >
-                            ${safeNum(row.Fee).toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={7} sx={{ textAlign: 'center', py: 5, color: theme.palette.text.secondary }}>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '120px' }}>
-                            <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
+                          <ToggleButton value="All">All</ToggleButton>
+                          <ToggleButton value="Buy">Buy</ToggleButton>
+                          <ToggleButton value="Sell">Sell</ToggleButton>
+                        </ToggleButtonGroup>
+                      </Box>
+                    </TableCell>
+
+                    <SortableTableCell orderBy={orderBy} orderDirection={orderDirection} property="Shares" onRequestSort={handleRequestSort} theme={theme} align="right">Shares</SortableTableCell>
+                    <SortableTableCell orderBy={orderBy} orderDirection={orderDirection} property="Price" onRequestSort={handleRequestSort} theme={theme} align="right">Price</SortableTableCell>
+                    <SortableTableCell orderBy={orderBy} orderDirection={orderDirection} property="Total_Invested" onRequestSort={handleRequestSort} theme={theme} align="right">Total Invested</SortableTableCell>
+                    <SortableTableCell orderBy={orderBy} orderDirection={orderDirection} property="Fee" onRequestSort={handleRequestSort} theme={theme} align="right">Fee</SortableTableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredAndSortedTransactions.length > 0 ? (
+                    filteredAndSortedTransactions.map((row, index) => (
+                      <TableRow
+                        key={index}
+                        sx={{
+                          '&:hover': { backgroundColor: theme.palette.action.hover, cursor: 'pointer' },
+                          '&:nth-of-type(odd)': { backgroundColor: theme.palette.action.selected },
+                          borderLeft: `4px solid ${row.Ops === 'Buy' ? theme.palette.success.main : row.Ops === 'Sell' ? theme.palette.error.main : theme.palette.info.main}`,
+                        }}
+                      >
+                        <TableCell sx={{ fontWeight: 600, padding: '14px 12px' }}>{formatDate(row.Date)}</TableCell>
+                        <TableCell sx={{ padding: '14px 12px' }}>
+                          <Box sx={{ display: 'inline-block', backgroundColor: theme.palette.primary.main, color: theme.palette.primary.contrastText, px: 1.5, py: 0.5, borderRadius: 1, fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
+                            {row.Ticker || 'N/A'}
                           </Box>
                         </TableCell>
+                        <TableCell sx={{ padding: '14px 12px' }}>
+                          <Chip
+                            label={row.Ops || 'N/A'} size="small"
+                            sx={{
+                              backgroundColor: row.Ops === 'Buy' ? theme.palette.success.main : row.Ops === 'Sell' ? theme.palette.error.main : theme.palette.info.main,
+                              color: 'white', fontWeight: 600, fontSize: '0.75rem', minWidth: '60px'
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>{safeNum(row.Shares).toFixed(3)}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>{formatCurrency(row.Price)}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, fontFamily: 'monospace', backgroundColor: theme.palette.success.light + '20', borderRadius: 1 }}>{formatCurrency(row.Total_Invested)}</TableCell>
+                        <TableCell align="right" sx={{ color: safeNum(row.Fee) > 0 ? theme.palette.warning.main : theme.palette.text.secondary, fontWeight: 600, fontFamily: 'monospace' }}>${safeNum(row.Fee).toFixed(2)}</TableCell>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            ) : (
-              // This is the fallback for the entire table if transactions.length === 0 initially
-              <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 5 }}>
-                <img src="/no-data.svg" alt="No data" style={{ maxWidth: '140px', opacity: 0.5, marginBottom: 16 }} />
-              </Box>
-            )}
-          </Paper>
-        </Box>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} sx={{ textAlign: 'center', py: 5 }}>
+                        <Typography variant="h6" color="text.secondary">No transactions found</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 5 }}>
+              <Typography variant="h6" color="text.secondary">No data available</Typography>
+            </Box>
+          )}
+        </Paper>
+      )}
+
+      {selectedTab === 2 && (
+        <Paper elevation={0} sx={chartStyle}>
+          {deposits.length > 0 ? (
+            <TableContainer sx={{ borderRadius: 2, border: `1px solid ${theme.palette.divider}`, overflowY: 'auto' }}>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <SortableTableCell orderBy={orderBy} orderDirection={orderDirection} property="Date" onRequestSort={handleRequestSort} theme={theme}>Date</SortableTableCell>
+                    <SortableTableCell orderBy={orderBy} orderDirection={orderDirection} property="Deposit_Amount" onRequestSort={handleRequestSort} theme={theme} align="right">Deposit Amount</SortableTableCell>
+                    <SortableTableCell orderBy={orderBy} orderDirection={orderDirection} property="Buying_Power" onRequestSort={handleRequestSort} theme={theme} align="right">Buying Power</SortableTableCell>
+                    <SortableTableCell orderBy={orderBy} orderDirection={orderDirection} property="Fee_Amount" onRequestSort={handleRequestSort} theme={theme} align="right">Fee Amount</SortableTableCell>
+                    <SortableTableCell orderBy={orderBy} orderDirection={orderDirection} property="Platform" onRequestSort={handleRequestSort} theme={theme}>Platform</SortableTableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {sortedDeposits.length > 0 ? (
+                    sortedDeposits.map((row, index) => (
+                      <TableRow
+                        key={index}
+                        sx={{
+                          '&:hover': { backgroundColor: theme.palette.action.hover, cursor: 'pointer' },
+                          '&:nth-of-type(odd)': { backgroundColor: theme.palette.action.selected },
+                          borderLeft: `4px solid ${theme.palette.info.main}`,
+                        }}
+                      >
+                        <TableCell sx={{ fontWeight: 600, padding: '14px 12px' }}>{formatDate(row.Date)}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>{formatCurrency(row.Deposit_Amount)}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, fontFamily: 'monospace', backgroundColor: theme.palette.success.light + '20', borderRadius: 1 }}>{formatCurrency(row.Buying_Power)}</TableCell> {/* Highlighted */}
+                        <TableCell align="right" sx={{ color: safeNum(row.Fee_Amount) > 0 ? theme.palette.warning.main : theme.palette.text.secondary, fontWeight: 600, fontFamily: 'monospace' }}>{formatCurrency(row.Fee_Amount)}</TableCell>
+                        <TableCell sx={{ padding: '14px 12px' }}>{row.Platform || 'N/A'}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={5} sx={{ textAlign: 'center', py: 5 }}>
+                        <Typography variant="h6" color="text.secondary">No deposit records found</Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {deposits.length > 0 && (
+                    <TableRow sx={{ '&:hover': { backgroundColor: 'transparent' }, backgroundColor: theme.palette.background.paper, borderTop: `2px solid ${theme.palette.primary.main}` }}>
+                      <TableCell sx={{ fontWeight: 700, padding: '14px 12px', fontSize: '0.9rem', color: theme.palette.text.primary }}>Total</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, fontFamily: 'monospace', fontSize: '0.9rem', color: theme.palette.success.main }}>{formatCurrency(totalDepositAmount)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, fontFamily: 'monospace', fontSize: '0.9rem', backgroundColor: theme.palette.success.light + '20', borderRadius: 1, color: theme.palette.success.main }}>{formatCurrency(totalBuyingPower)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, fontFamily: 'monospace', fontSize: '0.9rem', color: theme.palette.warning.main }}>{formatCurrency(totalFeeAmount)}</TableCell>
+                      <TableCell></TableCell> {/* Empty cell for Platform column in totals row */}
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 5 }}>
+              <Typography variant="h6" color="text.secondary">No data available</Typography>
+            </Box>
+          )}
+        </Paper>
       )}
     </Box>
   );

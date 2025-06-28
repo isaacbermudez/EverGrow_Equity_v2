@@ -26,6 +26,7 @@ except redis.exceptions.ConnectionError as e:
 # Rate limiting timestamps (still in-memory for simplicity for now, can be moved to Redis if global rate limiting across servers is needed)
 global_request_timestamps = []
 alpha_vantage_timestamps = []
+fred_timestamps = [] # New: dedicated list for FRED API timestamps
 
 def check_rate_limit(timestamps_list, limit_per_minute):
     """

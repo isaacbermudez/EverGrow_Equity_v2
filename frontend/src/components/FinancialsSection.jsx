@@ -25,6 +25,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import { Zap, TrendingUp, TrendingDown, Target } from 'lucide-react';
 import { teal, grey, green, red } from '@mui/material/colors';
 
+import IndexData from './IndexData'; // Import the new component
+
 // Constants for Local Storage Keys
 const LOCAL_STORAGE_LAST_SEARCH_SYMBOL = 'lastSearchSymbol';
 const LOCAL_STORAGE_COMPANY_PROFILE = 'companyProfile';
@@ -649,7 +651,6 @@ export default function FinancialsSection({ portfolioData = [] }) {
         setSelectedSymbol(symbol);
         setSearchSymbol(symbol);
         setLoading(false);
-        console.log(`Loaded data for ${symbol} from local storage.`);
         return;
       }
 
@@ -743,7 +744,6 @@ export default function FinancialsSection({ portfolioData = [] }) {
     const hasRelevantSymbolsInPortfolio = portfolioData.some(asset => asset.symbol);
 
     if (portfolioData.length === 0 || !hasRelevantSymbolsInPortfolio) {
-      console.log("Portfolio data is empty or has no symbols, clearing financial search/display.");
       setSearchSymbol('');
       setSelectedSymbol(null);
       setCompanyProfile(null);
@@ -757,6 +757,9 @@ export default function FinancialsSection({ portfolioData = [] }) {
 
   return (
     <Box sx={{ width: '100%', p: 2 }}>
+
+            <IndexData />
+      
       {/* Title Section */}
       <Box sx={{ mb: 4, textAlign: 'center' }}>
         <Typography
