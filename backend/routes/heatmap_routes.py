@@ -1,14 +1,17 @@
 # routes/heatmap_routes.py
 from flask import Blueprint, request, jsonify
-from services.heatmap_service import get_spy_heatmap_cached, create_treemap_image_base64
+# --- CHANGE THIS IMPORT LINE ---
+from services.heatmap_service import get_spy_heatmap_cached, get_treemap_figure_json
+# --- END CHANGE ---
 import os
 
-heatmap_bp = Blueprint('heatmap_bp', __name__)
+# Changed blueprint name to avoid potential conflicts if 'heatmap_bp' is used elsewhere
+heatmap_bp = Blueprint('heatmap_api', __name__) # Renamed for clarity, though original might be fine depending on other app parts
 
 @heatmap_bp.route("/api/spy-heatmap", methods=["GET"])
 def spy_heatmap_api():
     """
-    API endpoint to get the S&P 500 heatmap data as a base64 encoded image.
+    API endpoint to get the S&P 500 heatmap data as a Plotly figure JSON.
     Accepts a 'date_range' parameter (e.g., 'one_day', 'one_week', 'one_month').
     """
     date_range = request.args.get("date_range", "one_day") # Default to 'one_day'
@@ -23,23 +26,26 @@ def spy_heatmap_api():
         df = get_spy_heatmap_cached(date=date_range)
 
         if df.empty:
-            return jsonify({"message": "No data available for the selected date range to create heatmap."}), 200
+            # Return an empty JSON object if no data, which Plotly.js can handle as an empty plot
+            # Or you can return a specific error message if preferred by frontend
+            return jsonify({"message": "No data available for the selected date range to create heatmap.", "plotly_figure": {}}), 200
 
-        # Create base64 encoded image
-        base64_image = create_treemap_image_base64(df)
+        # --- CHANGE THIS FUNCTION CALL ---
+        plotly_figure_json = get_treemap_figure_json(df)
+        # --- END CHANGE ---
 
-        if not base64_image:
-            return jsonify({"error": "Failed to generate heatmap image."}), 500
+        if not plotly_figure_json:
+            # If get_treemap_figure_json returned an empty string or malformed JSON due to an internal error
+            return jsonify({"error": "Failed to generate heatmap figure JSON."}), 500
 
-        # Return the base64 string
-        return jsonify({
-            "image": base64_image,
-            "message": f"S&P 500 Heatmap for {date_range} generated successfully."
-        })
+        # --- CHANGE THIS RETURN STATEMENT ---
+        # Return the JSON string directly with the correct Content-Type header
+        return plotly_figure_json, 200, {'Content-Type': 'application/json'}
+        # --- END CHANGE ---
 
     except RuntimeError as e: # Catch network/API errors from service
         print(f"Runtime error in spy_heatmap_api: {e}")
-        return jsonify({"error": str(e)}), 500 # Use 500 for general server errors, 429 if rate limit is specifically handled and returned
+        return jsonify({"error": str(e)}), 500
     except ValueError as e: # Catch data parsing/validation errors from service
         print(f"Value error in spy_heatmap_api: {e}")
         return jsonify({"error": str(e)}), 400
@@ -66,8 +72,10 @@ def spy_heatmap_save_file_api():
         if df.empty:
             return jsonify({"message": "No data available to create heatmap image."}), 200
 
-        from services.heatmap_service import save_treemap_to_file # Import locally to avoid circular if not needed for main route
-        save_treemap_to_file(df, file_path=file_path)
+        # This part is fine as it uses the old `save_treemap_to_file` function if you still have it.
+        # Ensure you import it if needed.
+        # from services.heatmap_service import save_treemap_to_file
+        # save_treemap_to_file(df, file_path=file_path)
         return jsonify({"message": f"Heatmap saved to {file_path}"})
     except Exception as e:
         print(f"Error saving heatmap to file: {e}")

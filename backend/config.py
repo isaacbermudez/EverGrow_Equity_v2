@@ -11,6 +11,13 @@ class Config:
     ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY", "YOUR_ALPHA_VANTAGE_API_KEY")
     FRED_API_KEY = os.getenv("FRED_API_KEY", "YOUR_FRED_API_KEY_HERE")
 
+    # Update this line to the correct base URL
+    UNUSUALWHALES_API_BASE = os.getenv("UNUSUALWHALES_API_BASE", "https://phx.unusualwhales.com")
+
+    # Remove UNUSUALWHALES_API_KEY if it's not used by their API for this endpoint.
+    # If other Unusual Whales endpoints require a key, you might keep it, but it's not needed for the heatmap.
+    # UNUSUALWHALES_API_KEY = os.getenv("UNUSUALWHALES_API_KEY") # This line can be removed or commented out
+
     # API Rate Limits
     GLOBAL_RATE_LIMIT = 60 # requests per minute
     ALPHA_VANTAGE_RATE_LIMIT = 5 # requests per minute
